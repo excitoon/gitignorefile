@@ -1,13 +1,15 @@
-# gitignore_parser
+# `gitignorefile`
 
-![CI](https://github.com/mherrmann/gitignore_parser/workflows/CI/badge.svg)
-[![PyPI version](https://badge.fury.io/py/gitignore-parser.svg)](https://badge.fury.io/py/gitignore-parser)
+![CI](https://github.com/excitoon/gitignorefile/workflows/CI/badge.svg)
+[![PyPI version](https://badge.fury.io/py/gitignorefile.svg)](https://badge.fury.io/py/gitignorefile)
 
-A spec-compliant gitignore parser for Python
+A spec-compliant `.gitignore` parser for Python.
 
 ## Installation
 
-    pip install gitignore_parser
+```
+pip3 install gitignorefile
+```
 
 ## Usage
 
