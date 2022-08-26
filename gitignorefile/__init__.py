@@ -2,20 +2,17 @@ import collections
 import os
 import re
 
-from os.path import dirname
-from pathlib import Path
-
 
 def parse(full_path, base_dir=None):
     if base_dir is None:
-        base_dir = dirname(full_path)
+        base_dir = os.path.dirname(full_path)
     rules = []
     with open(full_path) as ignore_file:
         counter = 0
         for line in ignore_file:
             counter += 1
             line = line.rstrip("\n")
-            rule = rule_from_pattern(line, base_path=Path(base_dir).resolve(), source=(full_path, counter))
+            rule = rule_from_pattern(line, base_path=os.path.abspath(base_dir), source=(full_path, counter))
             if rule:
                 rules.append(rule)
     if not any(r.negation for r in rules):
@@ -46,7 +43,7 @@ def rule_from_pattern(pattern, base_path=None, source=None):
     Because git allows for nested .gitignore files, a base_path value
     is required for correct behavior. The base path should be absolute.
     """
-    if base_path and base_path != Path(base_path).resolve():
+    if base_path and base_path != os.path.abspath(base_path):
         raise ValueError("base_path must be absolute")
     # Store the exact pattern for our repr and string functions
     orig_pattern = pattern
@@ -115,7 +112,7 @@ def rule_from_pattern(pattern, base_path=None, source=None):
         negation=negation,
         directory_only=directory_only,
         anchored=anchored,
-        base_path=Path(base_path) if base_path else None,
+        base_path=base_path,
         source=source,
     )
 
@@ -143,9 +140,9 @@ class IgnoreRule(collections.namedtuple("IgnoreRule_", IGNORE_RULE_FIELDS)):
     def match(self, abs_path):
         matched = False
         if self.base_path:
-            rel_path = str(Path(abs_path).resolve().relative_to(self.base_path))
+            rel_path = str(os.path.relpath(abs_path, self.base_path))
         else:
-            rel_path = str(Path(abs_path))
+            rel_path = str(abs_path)
         if rel_path.startswith("./"):
             rel_path = rel_path[2:]
         if re.search(self.regex, rel_path):

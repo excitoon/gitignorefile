@@ -107,6 +107,8 @@ class Tests(unittest.TestCase):
         self.assertTrue(matches("/home/michael/directory"))
         self.assertTrue(matches("/home/michael/directory-trailing/"))
 
+    # TODO тесты на кривые входные пути. тесты на кривые базовые пути.
+
     def test_robert_simple_rules(self):
         matches = _parse_gitignore_string(["__pycache__", "*.py[cod]", ".venv/"], fake_base_dir="/home/robert")
         self.assertFalse(matches("/home/robert/main.py"))
@@ -161,6 +163,13 @@ class Tests(unittest.TestCase):
         self.assertTrue(matches("/home/robert/whatever.ignore"))
         self.assertFalse(matches("/home/robert/keep.ignore"))
         self.assertFalse(matches("/home/robert/!keep.ignore"))
+
+    def test_does_not_fail_with_symlinks(self):
+        with tempfile.TemporaryDirectory() as d:
+            matches = _parse_gitignore_string(["*.venv"], fake_base_dir=d)
+            os.makedirs(f"{d}/.venv/bin")
+            os.symlink(sys.executable, f"{d}/.venv/bin/python")
+            matches(f"{d}/.venv/bin/python")
 
     def test_robert_match_does_not_resolve_symlinks(self):
         """Test match on files under symlinked directories
