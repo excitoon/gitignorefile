@@ -8,10 +8,10 @@ from setuptools import setup
 
 description = 'A spec-compliant gitignore parser for Python 3.5+'
 setup(
-    name='gitignore_parser',
-    version='0.0.8',
+    name='gitignorefile',
+    version='0.0.0',
     install_requires=["pathlib; python_version < '3.0'"],
-    description=description,
+    description='A spec-compliant `.gitignore` parser for Python',
     long_description=
         description + '\n\nhttps://github.com/mherrmann/gitignore_parser',
     author='Michael Herrmann',
