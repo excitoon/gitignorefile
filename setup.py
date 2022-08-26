@@ -1,41 +1,33 @@
-"""A spec-compliant gitignore parser for Python 3.5+
+import setuptools
 
-See:
-https://github.com/mherrmann/gitignore_parser
-"""
 
-from setuptools import setup
-
-description = 'A spec-compliant gitignore parser for Python 3.5+'
-setup(
-    name='gitignorefile',
-    version='0.0.0',
-    install_requires=["pathlib; python_version < '3.0'"],
-    description='A spec-compliant `.gitignore` parser for Python',
-    long_description=
-        description + '\n\nhttps://github.com/mherrmann/gitignore_parser',
-    author='Michael Herrmann',
-    author_email='michael+removethisifyouarehuman@herrmann.io',
-    url='https://github.com/mherrmann/gitignore_parser',
-    py_modules=['gitignore_parser'],
+setuptools.setup(
+    name="gitignorefile",
+    version="0.0.1",
+    description="A spec-compliant `.gitignore` parser for Python",
+    long_description="A spec-compliant `.gitignore` parser for Python.",
+    long_description_content_type="text/markdown",
+    author="Vladimir Chebotarev",
+    author_email="vladimir.chebotarev@gmail.com",
+    license="MIT",
     classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Intended Audience :: Developers',
-    
-        'License :: OSI Approved :: MIT License',
-    
-        'Operating System :: OS Independent',
-    
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-
-        'Topic :: Software Development :: Libraries',
-        'Topic :: Software Development :: Libraries :: Python Modules'
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3 :: Only",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Topic :: Software Development :: Version Control :: Git",
+        "Topic :: Text Processing :: Filters",
     ],
-    license='MIT',
-    keywords='gitignore',
-    platforms=['MacOS', 'Windows', 'Debian', 'Fedora', 'CentOS']
+    keywords=["git", "gitignore"],
+    project_urls={
+        "Documentation": "https://github.com/excitoon/gitignorefile/blob/master/README.md",
+        "Source": "https://github.com/excitoon/gitignorefile",
+        "Tracker": "https://github.com/excitoon/gitignorefile/issues",
+    },
+    url="https://github.com/excitoon/gitignorefile",
+    packages=["gitignorefile"],
+    scripts=[],
+    install_requires=[],
 )
