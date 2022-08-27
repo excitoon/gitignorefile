@@ -9,6 +9,9 @@ import gitignorefile
 
 class TestCache(unittest.TestCase):
     def test_simple(self):
+        def normalize_path(path):
+            return os.path.abspath(path).replace(os.sep, "/")
+
         class StatResult:
             def __init__(self, is_file=False):
                 self.st_ino = id(self)
@@ -19,13 +22,13 @@ class TestCache(unittest.TestCase):
             def __init__(self, directories, files):
                 self.__filesystem = {}
                 for path in directories:
-                    self.__filesystem[path] = StatResult()
+                    self.__filesystem[normalize_path(path)] = StatResult()
                 for path in files:
-                    self.__filesystem[path] = StatResult(True)
+                    self.__filesystem[normalize_path(path)] = StatResult(True)
 
             def __call__(self, path):
                 try:
-                    return self.__filesystem[path]
+                    return self.__filesystem[normalize_path(path)]
 
                 except KeyError:
                     raise FileNotFoundError()
@@ -52,21 +55,19 @@ class TestCache(unittest.TestCase):
 
         def mock_open(path):
             data = {
-                "/home/vladimir/project/directory/.gitignore": ["file.txt"],
-                "/home/vladimir/project/.gitignore": ["file2.txt"],
+                normalize_path("/home/vladimir/project/directory/.gitignore"): ["file.txt"],
+                normalize_path("/home/vladimir/project/.gitignore"): ["file2.txt"],
             }
 
             statistics["open"] += 1
-            path = os.path.abspath(path).replace(os.sep, "/")
             try:
-                return unittest.mock.mock_open(read_data="\n".join(data[path]))(path)
+                return unittest.mock.mock_open(read_data="\n".join(data[normalize_path(path)]))(path)
 
             except KeyError:
                 raise FileNotFoundError()
 
         def mock_stat(path):
             statistics["stat"] += 1
-            path = os.path.abspath(path).replace(os.sep, "/")
             return my_stat(path)
 
         with unittest.mock.patch("builtins.open", mock_open):
@@ -79,7 +80,9 @@ class TestCache(unittest.TestCase):
                 self.assertFalse(matches("/home/vladimir/project/file.txt"))
 
         self.assertEqual(statistics["open"], 2)
-        self.assertEqual(statistics["stat"], 6 * (2 + 1) + 5)
+
+        # On Windows and Python 3.7 `os.path.isdir()` does not use `os.stat`. See `Modules/getpath.c`.
+        self.assertIn(statistics["stat"], (6 * (2 + 1) + 5, 6 * (2 + 1)))
 
     def test_wrong_symlink(self):
         with tempfile.TemporaryDirectory() as d:

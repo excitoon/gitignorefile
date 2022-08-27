@@ -5,7 +5,7 @@ import setuptools
 with open(f"{os.path.dirname(os.path.abspath(__file__))}/README.md") as readme:
     setuptools.setup(
         name="gitignorefile",
-        version="1.0.4",
+        version="1.0.5",
         description="A spec-compliant `.gitignore` parser for Python",
         long_description=readme.read(),
         long_description_content_type="text/markdown",
