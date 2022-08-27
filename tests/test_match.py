@@ -129,6 +129,13 @@ class TestMatch(unittest.TestCase):
             os.symlink(sys.executable, f"{d}/.venv/bin/python")
             matches(f"{d}/.venv/bin/python")
 
+    def test_single_letter(self):
+        matches = self.__parse_gitignore_string(["a"], fake_base_dir="/home/michael")
+        self.assertTrue(matches("/home/michael/a"))
+        self.assertFalse(matches("/home/michael/b"))
+        self.assertTrue(matches("/home/michael/b/a"))
+        self.assertTrue(matches("/home/michael/a/b"))
+
     def test_robert_simple_rules(self):
         matches = self.__parse_gitignore_string(["__pycache__", "*.py[cod]", ".venv/"], fake_base_dir="/home/robert")
         self.assertFalse(matches("/home/robert/main.py"))
