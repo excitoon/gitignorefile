@@ -122,6 +122,13 @@ class TestMatch(unittest.TestCase):
         self.assertFalse(matches("/home/michael/subdir/directory-abc-trailing/"))
         self.assertFalse(matches("/home/michael/subdir/directory-abc-trailing/file.txt"))
 
+    def test_ignore_all_subdirectories(self):
+        matches = self.__parse_gitignore_string("**/", fake_base_dir="/home/michael")
+        self.assertFalse(matches("/home/michael/file.txt"))
+        self.assertTrue(matches("/home/michael/directory/"))
+        self.assertTrue(matches("/home/michael/directory/file.txt"))
+        self.assertTrue(matches("/home/michael/directory/subdirectory/"))
+
     def test_robert_simple_rules(self):
         matches = self.__parse_gitignore_string(["__pycache__", "*.py[cod]", ".venv/"], fake_base_dir="/home/robert")
         self.assertFalse(matches("/home/robert/main.py"))
