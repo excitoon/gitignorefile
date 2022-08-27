@@ -10,7 +10,7 @@ def parse(full_path, base_dir=None):
     rules = []
     with open(full_path) as ignore_file:
         for i, line in enumerate(ignore_file, start=1):
-            line = line.rstrip("\n")
+            line = line.rstrip("\r\n")
             rule = _rule_from_pattern(line, base_path=os.path.abspath(base_dir), source=(full_path, i))
             if rule:
                 rules.append(rule)
@@ -24,9 +24,13 @@ def parse(full_path, base_dir=None):
         return lambda file_path: _handle_negation(file_path, rules)
 
 
-def ignore(full_path, base_dir=None):
-    matches = parse(full_path, base_dir=base_dir)
+def ignore():
+    matches = Cache()
     return lambda root, names: {name for name in names if matches(os.path.join(root, name))}
+
+
+def ignored(path):
+    return Cache()(path)
 
 
 class Cache:
@@ -34,6 +38,10 @@ class Cache:
         self.__gitignores = {}
 
     def __get_parents(self, path):
+        if not os.path.isdir(path):
+            path = os.path.dirname(path)
+            yield path
+
         while True:
             new_path = os.path.dirname(path)
             if not os.path.samefile(path, new_path):
@@ -44,24 +52,36 @@ class Cache:
 
     def __call__(self, path):
         add_to_children = {}
+        plain_paths = []
         for parent in self.__get_parents(os.path.abspath(path)):
             if parent in self.__gitignores:
                 break
 
             elif os.path.isfile(os.path.join(parent, ".gitignore")):
-                add_to_children[parent] = parse(os.path.join(parent, ".gitignore"), base_dir=parent)
+                p = parse(os.path.join(parent, ".gitignore"), base_dir=parent)
+                add_to_children[parent] = (p, plain_paths)
+                plain_paths = []
+
+            else:
+                plain_paths.append(parent)
 
         else:
+            for plain_path in plain_paths:
+                self.__gitignores[plain_path] = []
+
             if not add_to_children:
                 return False
 
-        for parent in reversed(add_to_children):
+        for parent, (_, parent_plain_paths) in reversed(add_to_children.items()):
             self.__gitignores[parent] = []
-            for parent_to_add in reversed(add_to_children):
-                self.__gitignores[parent].append(add_to_children[parent_to_add])
+            for parent_to_add, (gitignore_to_add, _) in reversed(add_to_children.items()):
+                self.__gitignores[parent].append(gitignore_to_add)
                 if parent_to_add == parent:
                     break
+
             self.__gitignores[parent].reverse()
+            for plain_path in parent_plain_paths:
+                self.__gitignores[plain_path] = self.__gitignores[parent]
 
         return any((m(path) for m in self.__gitignores[parent]))  # This parent comes either from first or second loop.
 

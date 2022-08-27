@@ -1,5 +1,4 @@
 import os
-import shutil
 import sys
 import tempfile
 import unittest
@@ -284,81 +283,6 @@ class TestMatch(unittest.TestCase):
         self.assertFalse(matches("/home/robert/not_excluded/excluded_not.txt"))
         self.assertFalse(matches("/home/robert/.test_gitignore_empty"))
 
-    def test_robert_shutil_ignore_function(self):
-        with tempfile.TemporaryDirectory() as d:
-            ignore = self.__ignore_gitignore_string(
-                [
-                    "test__pycache__",
-                    "*.py[cod]",
-                    ".test_venv/",
-                    ".test_venv/**",
-                    ".test_venv/*",
-                    "!test_inverse",
-                ],
-                fake_base_dir=f"{d}/example",
-            )
-
-            for directory in [
-                "test__pycache__/excluded/excluded",
-                ".test_venv",
-                "not_excluded/test__pycache__",
-                "not_excluded/excluded_not",
-                "not_excluded/excluded",
-                "not_excluded/not_excluded2",
-            ]:
-                os.makedirs(f"{d}/example/{directory}")
-
-            for name in [
-                "test__pycache__/.test_gitignore",
-                "test__pycache__/excluded/excluded/excluded.txt",
-                "test__pycache__/excluded/excluded/test_inverse",
-                "test__pycache__/some_file.txt",
-                "test__pycache__/test",
-                ".test_gitignore",
-                ".test_venv/some_file.txt",
-                "not_excluded.txt",
-                "not_excluded/.test_gitignore",
-                "not_excluded/excluded_not/sub_excluded.txt",
-                "not_excluded/excluded/excluded.txt",
-                "not_excluded/not_excluded2.txt",
-                "not_excluded/not_excluded2/sub_excluded.txt",
-                "not_excluded/excluded_not.txt",
-                ".test_gitignore_empty",
-            ]:
-                with open(f"{d}/example/{name}", "w"):
-                    pass
-
-            result = []
-            shutil.copytree(f"{d}/example", f"{d}/target", ignore=ignore)
-            for root, directories, files in os.walk(f"{d}/target"):
-                for directory in directories:
-                    result.append(os.path.join(root, directory))
-                for name in files:
-                    result.append(os.path.join(root, name))
-            result = sorted((os.path.relpath(x, f"{d}/target").replace(os.sep, "/") for x in result))
-            self.assertEqual(
-                result,
-                [
-                    ".test_gitignore",
-                    ".test_gitignore_empty",
-                    "not_excluded",
-                    "not_excluded.txt",
-                    "not_excluded/.test_gitignore",
-                    "not_excluded/excluded",
-                    "not_excluded/excluded/excluded.txt",
-                    "not_excluded/excluded_not",
-                    "not_excluded/excluded_not.txt",
-                    "not_excluded/excluded_not/sub_excluded.txt",
-                    "not_excluded/not_excluded2",
-                    "not_excluded/not_excluded2.txt",
-                    "not_excluded/not_excluded2/sub_excluded.txt",
-                ],
-            )
-
     def __parse_gitignore_string(self, data, fake_base_dir):
         with unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data="\n".join(data))):
             return gitignorefile.parse(f"{fake_base_dir}/.gitignore", fake_base_dir)
-
-    def __ignore_gitignore_string(self, data, fake_base_dir):
-        with unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data="\n".join(data))):
-            return gitignorefile.ignore(f"{fake_base_dir}/.gitignore", fake_base_dir)
