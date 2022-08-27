@@ -109,7 +109,7 @@ class TestMatch(unittest.TestCase):
         self.assertTrue(matches("/home/michael/directory-trailing/"))
 
     def test_spurious_matches(self):
-        matches = self.__parse_gitignore_string("abc", fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["abc"], fake_base_dir="/home/michael")
         self.assertFalse(matches("/home/michael/abc.txt"))
         self.assertFalse(matches("/home/michael/file-abc.txt"))
         self.assertFalse(matches("/home/michael/fileabc"))
@@ -121,6 +121,13 @@ class TestMatch(unittest.TestCase):
         self.assertFalse(matches("/home/michael/subdir/directoryabc"))
         self.assertFalse(matches("/home/michael/subdir/directory-abc-trailing/"))
         self.assertFalse(matches("/home/michael/subdir/directory-abc-trailing/file.txt"))
+
+    def test_does_not_fail_with_symlinks(self):
+        with tempfile.TemporaryDirectory() as d:
+            matches = self.__parse_gitignore_string(["*.venv"], fake_base_dir=d)
+            os.makedirs(f"{d}/.venv/bin")
+            os.symlink(sys.executable, f"{d}/.venv/bin/python")
+            matches(f"{d}/.venv/bin/python")
 
     def test_robert_simple_rules(self):
         matches = self.__parse_gitignore_string(["__pycache__", "*.py[cod]", ".venv/"], fake_base_dir="/home/robert")
@@ -174,13 +181,6 @@ class TestMatch(unittest.TestCase):
         self.assertTrue(matches("/home/robert/whatever.ignore"))
         self.assertFalse(matches("/home/robert/keep.ignore"))
         self.assertTrue(matches("/home/robert/!keep.ignore"))
-
-    def test_does_not_fail_with_symlinks(self):
-        with tempfile.TemporaryDirectory() as d:
-            matches = self.__parse_gitignore_string(["*.venv"], fake_base_dir=d)
-            os.makedirs(f"{d}/.venv/bin")
-            os.symlink(sys.executable, f"{d}/.venv/bin/python")
-            matches(f"{d}/.venv/bin/python")
 
     def test_robert_match_does_not_resolve_symlinks(self):
         """Test match on files under symlinked directories

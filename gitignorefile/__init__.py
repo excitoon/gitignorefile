@@ -35,7 +35,7 @@ class Cache:
 
     def __get_parents(self, path):
         while True:
-            new_path = os.path.abspath(os.path.join(path, ".."))
+            new_path = os.path.dirname(path)
             if not os.path.samefile(path, new_path):
                 yield new_path
                 path = new_path
@@ -132,7 +132,7 @@ def _rule_from_pattern(pattern, base_path=None, source=None):
     if pattern.endswith("/"):
         pattern = pattern[:-1]
     # patterns with leading hashes are escaped with a backslash in front, unescape it
-    if pattern[0] == "\\" and pattern[1] == "#":
+    if pattern.startswith("\\#"):
         pattern = pattern[1:]
     # trailing spaces are ignored unless they are escaped with a backslash
     i = len(pattern) - 1
