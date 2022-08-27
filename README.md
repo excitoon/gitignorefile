@@ -1,7 +1,10 @@
 # `gitignorefile`
 
-![CI](https://github.com/excitoon/gitignorefile/workflows/CI/badge.svg)
-[![PyPI version](https://badge.fury.io/py/gitignorefile.svg)](https://badge.fury.io/py/gitignorefile)
+![black](https://github.com/excitoon/gitignorefile/workflows/black/badge.svg)
+![Linux](https://github.com/excitoon/gitignorefile/workflows/ubuntu/badge.svg)
+![OS X](https://github.com/excitoon/gitignorefile/workflows/macos/badge.svg)
+![Windows](https://github.com/excitoon/gitignorefile/workflows/windows/badge.svg)
+[![PyPI](https://badge.fury.io/py/gitignorefile.svg)](https://badge.fury.io/py/gitignorefile)
 
 A spec-compliant `.gitignore` parser for Python.
 

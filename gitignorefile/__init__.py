@@ -72,9 +72,9 @@ class Cache:
             if not add_to_children:
                 return False
 
-        for parent, (_, parent_plain_paths) in reversed(add_to_children.items()):
+        for parent, (_, parent_plain_paths) in reversed(list(add_to_children.items())):
             self.__gitignores[parent] = []
-            for parent_to_add, (gitignore_to_add, _) in reversed(add_to_children.items()):
+            for parent_to_add, (gitignore_to_add, _) in reversed(list(add_to_children.items())):
                 self.__gitignores[parent].append(gitignore_to_add)
                 if parent_to_add == parent:
                     break

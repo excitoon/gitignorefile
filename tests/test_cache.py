@@ -71,12 +71,12 @@ class TestCache(unittest.TestCase):
 
         with unittest.mock.patch("builtins.open", mock_open):
             with unittest.mock.patch("os.stat", mock_stat):
-                cache = gitignorefile.Cache()
-                self.assertTrue(cache("/home/vladimir/project/directory/subdirectory/file.txt"))
-                self.assertTrue(cache("/home/vladimir/project/directory/subdirectory/file2.txt"))
-                self.assertTrue(cache("/home/vladimir/project/directory/file.txt"))
-                self.assertTrue(cache("/home/vladimir/project/directory/file2.txt"))
-                self.assertFalse(cache("/home/vladimir/project/file.txt"))
+                matches = gitignorefile.Cache()
+                self.assertTrue(matches("/home/vladimir/project/directory/subdirectory/file.txt"))
+                self.assertTrue(matches("/home/vladimir/project/directory/subdirectory/file2.txt"))
+                self.assertTrue(matches("/home/vladimir/project/directory/file.txt"))
+                self.assertTrue(matches("/home/vladimir/project/directory/file2.txt"))
+                self.assertFalse(matches("/home/vladimir/project/file.txt"))
 
         self.assertEqual(statistics["open"], 2)
         self.assertEqual(statistics["stat"], 6 * (2 + 1) + 5)
