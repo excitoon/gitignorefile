@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name="gitignorefile",
-    version="0.0.1",
+    version="1.0.0",
     description="A spec-compliant `.gitignore` parser for Python",
     long_description="A spec-compliant `.gitignore` parser for Python.",
     long_description_content_type="text/markdown",
