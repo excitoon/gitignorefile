@@ -12,7 +12,7 @@ class TestGitIgnoreCache(unittest.TestCase):
             def __init__(self, ino, is_file=False):
                 self.st_ino = ino
                 self.st_dev = 0
-                self.st_mode = stat.S_IFREG if is_file else 0
+                self.st_mode = stat.S_IFREG if is_file else stat.S_IFDIR
 
         def mock_open(path):
             data = {

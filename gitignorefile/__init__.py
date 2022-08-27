@@ -31,11 +31,11 @@ def ignore(full_path, base_dir=None):
 
 class Cache:
     def __init__(self):
-        self.__gitignores = collections.defaultdict(list)
+        self.__gitignores = {}
 
     def __get_parents(self, path):
         while True:
-            new_path = os.path.join(path, "..")
+            new_path = os.path.abspath(os.path.join(path, ".."))
             if not os.path.samefile(path, new_path):
                 yield new_path
                 path = new_path
@@ -43,26 +43,27 @@ class Cache:
                 break
 
     def __call__(self, path):
-        # FIXME improve performance.
-        # add_to_children = []
-        # for parent in self.__get_parents(os.path.abspath(path)):
-        #    if parent in self.__gitignores:
-        #        # TODO...
-        #        break
+        add_to_children = {}
+        for parent in self.__get_parents(os.path.abspath(path)):
+            if parent in self.__gitignores:
+                break
 
-        #    else:
-        #        if os.path.isfile(os.path.join(parent, ".gitignore")):
-        #            add_to_children.append(1)  # FIXME
+            elif os.path.isfile(os.path.join(parent, ".gitignore")):
+                add_to_children[parent] = parse(os.path.join(parent, ".gitignore"), base_dir=parent)
 
-        # FIXME
-        # return any((m(path) for m in self.__gitignores[parent]))
-        return any(
-            (
-                parse(os.path.join(parent, ".gitignore"))(path)
-                for parent in self.__get_parents(path)
-                if os.path.isfile(os.path.join(parent, ".gitignore"))
-            )
-        )
+        else:
+            if not add_to_children:
+                return False
+
+        for parent in reversed(add_to_children):
+            self.__gitignores[parent] = []
+            for parent_to_add in reversed(add_to_children):
+                self.__gitignores[parent].append(add_to_children[parent_to_add])
+                if parent_to_add == parent:
+                    break
+            self.__gitignores[parent].reverse()
+
+        return any((m(path) for m in self.__gitignores[parent]))  # This parent comes either from first or second loop.
 
 
 def _handle_negation(file_path, rules):
