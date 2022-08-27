@@ -15,8 +15,8 @@ def parse(full_path, base_dir=None):
             if rule:
                 rules.append(rule)
 
-    if not any(r.negation for r in rules):
-        return lambda file_path: any(r.match(file_path) for r in rules)
+    if not any((r.negation for r in rules)):
+        return lambda file_path: any((r.match(file_path) for r in rules))
 
     else:
         # We have negation rules. We can't use a simple "any" to evaluate them.
@@ -26,14 +26,10 @@ def parse(full_path, base_dir=None):
 
 def ignore(full_path, base_dir=None):
     matches = parse(full_path, base_dir=base_dir)
-
-    def result(root, names):
-        return {name for name in names if matches(os.path.join(root, name))}
-
-    return result
+    return lambda root, names: {name for name in names if matches(os.path.join(root, name))}
 
 
-class GitIgnoreCache:
+class Cache:
     def __init__(self):
         self.__gitignores = collections.defaultdict(list)
 
@@ -62,7 +58,7 @@ class GitIgnoreCache:
         # return any((m(path) for m in self.__gitignores[parent]))
         return any(
             (
-                parse(os.path.join(path, ".gitignore"))(path)
+                parse(os.path.join(parent, ".gitignore"))(path)
                 for parent in self.__get_parents(path)
                 if os.path.isfile(os.path.join(parent, ".gitignore"))
             )
