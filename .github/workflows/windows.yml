@@ -8,18 +8,6 @@ on:
     branches: [master]
 
 jobs:
-  python-36-windows:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.6
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.6'
-    - name: Test with unittest
-      run: |
-        python3 -m unittest discover
-
   python-37-windows:
     runs-on: windows-latest
     steps:
