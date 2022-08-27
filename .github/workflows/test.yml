@@ -8,7 +8,7 @@ on:
     branches: [master]
 
 jobs:
-  python-3.8-ubuntu:
+  python-38-ubuntu:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -20,7 +20,7 @@ jobs:
       run: |
         python3 -m unittest discover
 
-  python-3.8-macos:
+  python-38-macos:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
@@ -32,7 +32,7 @@ jobs:
       run: |
         python3 -m unittest discover
 
-  python-3.8-windows:
+  python-38-windows:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v2
