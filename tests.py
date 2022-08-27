@@ -108,6 +108,20 @@ class TestMatch(unittest.TestCase):
         self.assertTrue(matches("/home/michael/directory"))
         self.assertTrue(matches("/home/michael/directory-trailing/"))
 
+    def test_spurious_matches(self):
+        matches = self.__parse_gitignore_string("abc", fake_base_dir="/home/michael")
+        self.assertFalse(matches("/home/michael/abc.txt"))
+        self.assertFalse(matches("/home/michael/file-abc.txt"))
+        self.assertFalse(matches("/home/michael/fileabc"))
+        self.assertFalse(matches("/home/michael/directoryabc/"))
+        self.assertFalse(matches("/home/michael/directoryabc-trailing"))
+        self.assertFalse(matches("/home/michael/directoryabc-trailing/"))
+        self.assertFalse(matches("/home/michael/abc-suffixed/file.txt"))
+        self.assertFalse(matches("/home/michael/subdir/abc.txt"))
+        self.assertFalse(matches("/home/michael/subdir/directoryabc"))
+        self.assertFalse(matches("/home/michael/subdir/directory-abc-trailing/"))
+        self.assertFalse(matches("/home/michael/subdir/directory-abc-trailing/file.txt"))
+
     def test_robert_simple_rules(self):
         matches = self.__parse_gitignore_string(["__pycache__", "*.py[cod]", ".venv/"], fake_base_dir="/home/robert")
         self.assertFalse(matches("/home/robert/main.py"))
