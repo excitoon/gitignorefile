@@ -9,7 +9,7 @@ import gitignorefile
 
 class TestMatch(unittest.TestCase):
     def test_simple(self):
-        matches = self.__parse_gitignore_string(["__pycache__/", "*.py[cod]"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["__pycache__/", "*.py[cod]"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertFalse(matches("/home/michael/main.py", is_dir=is_dir))
@@ -19,7 +19,7 @@ class TestMatch(unittest.TestCase):
         self.assertTrue(matches("/home/michael/__pycache__", is_dir=True))
 
     def test_simple_without_trailing_slash(self):
-        matches = self.__parse_gitignore_string(["__pycache__", "*.py[cod]"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["__pycache__", "*.py[cod]"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertFalse(matches("/home/michael/main.py", is_dir=is_dir))
@@ -28,7 +28,7 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/__pycache__", is_dir=is_dir))
 
     def test_wildcard(self):
-        matches = self.__parse_gitignore_string(["hello.*"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["hello.*"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/hello.txt", is_dir=is_dir))
@@ -40,7 +40,7 @@ class TestMatch(unittest.TestCase):
                 self.assertFalse(matches("/home/michael/helloX", is_dir=is_dir))
 
     def test_anchored_wildcard(self):
-        matches = self.__parse_gitignore_string(["/hello.*"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["/hello.*"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/hello.txt", is_dir=is_dir))
@@ -56,7 +56,7 @@ class TestMatch(unittest.TestCase):
                 "partiallyignoredspace2 \\  ",
                 "notignoredmultiplespace\\ \\ \\ ",
             ],
-            fake_base_dir="/home/michael",
+            mock_base_path="/home/michael",
         )
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
@@ -78,7 +78,7 @@ class TestMatch(unittest.TestCase):
     def test_comment(self):
         matches = self.__parse_gitignore_string(
             ["somematch", "#realcomment", "othermatch", "\\#imnocomment"],
-            fake_base_dir="/home/michael",
+            mock_base_path="/home/michael",
         )
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
@@ -93,7 +93,7 @@ class TestMatch(unittest.TestCase):
         however `frotz/` matches `frotz` and `a/frotz` that is a directory (all paths are relative from the
         `.gitignore` file). See https://git-scm.com/docs/gitignore .
         """
-        matches = self.__parse_gitignore_string(["doc/frotz/"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["doc/frotz/"], mock_base_path="/home/michael")
         self.assertFalse(matches("/home/michael/doc/frotz", is_dir=False))
         self.assertTrue(matches("/home/michael/doc/frotz", is_dir=True))
         for is_dir in (False, True):
@@ -101,7 +101,7 @@ class TestMatch(unittest.TestCase):
                 self.assertFalse(matches("/home/michael/a/doc/frotz", is_dir=is_dir))
 
     def test_second_level_directories_unchained(self):
-        matches = self.__parse_gitignore_string(["**/doc/frotz/"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["**/doc/frotz/"], mock_base_path="/home/michael")
         self.assertFalse(matches("/home/michael/doc/frotz", is_dir=False))
         self.assertTrue(matches("/home/michael/doc/frotz", is_dir=True))
         self.assertFalse(matches("/home/michael/a/doc/frotz", is_dir=False))
@@ -118,14 +118,14 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/a/b/doc/frotz/file", is_dir=True))
 
     def test_second_level_files(self):
-        matches = self.__parse_gitignore_string(["doc/frotz"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["doc/frotz"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/doc/frotz", is_dir=is_dir))
                 self.assertFalse(matches("/home/michael/a/doc/frotz", is_dir=is_dir))
 
     def test_ignore_file(self):
-        matches = self.__parse_gitignore_string([".venv"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string([".venv"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/.venv", is_dir=is_dir))
@@ -133,7 +133,7 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/.venv/file.txt", is_dir=is_dir))
 
     def test_ignore_core_file(self):
-        matches = self.__parse_gitignore_string(["core", "!core/"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["core", "!core/"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertFalse(matches("/home/michael/core/a", is_dir=is_dir))
@@ -143,7 +143,7 @@ class TestMatch(unittest.TestCase):
         self.assertFalse(matches("/home/michael/a/core", is_dir=True))
 
     def test_ignore_directory(self):
-        matches = self.__parse_gitignore_string([".venv/"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string([".venv/"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/.venv/folder", is_dir=is_dir))
@@ -152,19 +152,19 @@ class TestMatch(unittest.TestCase):
         self.assertTrue(matches("/home/michael/.venv", is_dir=True))
 
     def test_ignore_directory_greedy(self):
-        matches = self.__parse_gitignore_string([".venv"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string([".venv"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertFalse(matches("/home/michael/.venvlol", is_dir=is_dir))
 
     def test_ignore_file_greedy(self):
-        matches = self.__parse_gitignore_string([".venv/"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string([".venv/"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertFalse(matches("/home/michael/.venvlol", is_dir=is_dir))
 
     def test_ignore_directory_asterisk(self):
-        matches = self.__parse_gitignore_string([".venv/*"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string([".venv/*"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertFalse(matches("/home/michael/.venv", is_dir=is_dir))
@@ -173,7 +173,7 @@ class TestMatch(unittest.TestCase):
     def test_negation(self):
         matches = self.__parse_gitignore_string(
             ["*.ignore", "!keep.ignore"],
-            fake_base_dir="/home/michael",
+            mock_base_path="/home/michael",
         )
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
@@ -182,7 +182,7 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/waste.ignore", is_dir=is_dir))
 
     def test_double_asterisks(self):
-        matches = self.__parse_gitignore_string(["foo/**/Bar"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["foo/**/Bar"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/foo/hello/Bar", is_dir=is_dir))
@@ -191,14 +191,14 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/foo/Bar", is_dir=is_dir))
 
     def test_single_asterisk(self):
-        matches = self.__parse_gitignore_string(["*"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["*"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/file.txt", is_dir=is_dir))
                 self.assertTrue(matches("/home/michael/directory/file.txt", is_dir=is_dir))
 
     def test_spurious_matches(self):
-        matches = self.__parse_gitignore_string(["abc"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["abc"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertFalse(matches("/home/michael/abc.txt", is_dir=is_dir))
@@ -213,13 +213,13 @@ class TestMatch(unittest.TestCase):
 
     def test_does_not_fail_with_symlinks(self):
         with tempfile.TemporaryDirectory() as d:
-            matches = self.__parse_gitignore_string(["*.venv"], fake_base_dir=d)
+            matches = self.__parse_gitignore_string(["*.venv"], mock_base_path=d)
             os.makedirs(f"{d}/.venv/bin")
             os.symlink(sys.executable, f"{d}/.venv/bin/python")
             self.assertTrue(matches(f"{d}/.venv/bin/python"))
 
     def test_single_letter(self):
-        matches = self.__parse_gitignore_string(["a"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["a"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/a", is_dir=is_dir))
@@ -228,13 +228,15 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/a/b", is_dir=is_dir))
 
     def test_exclude_directories(self):
-        matches = self.__parse_gitignore_string(["*.yaml", "!*.yaml/"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["*.yaml", "!*.yaml/"], mock_base_path="/home/michael")
         self.assertTrue(matches("/home/michael/file.yaml", is_dir=False))
         self.assertFalse(matches("/home/michael/file.yaml", is_dir=True))
         self.assertFalse(matches("/home/michael/dir.yaml/file.sql", is_dir=False))
 
     def test_exclude_from_subdirectory(self):
-        matches = self.__parse_gitignore_string(["*.log", "!important/*.log", "trace.*"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(
+            ["*.log", "!important/*.log", "trace.*"], mock_base_path="/home/michael"
+        )
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/a.log", is_dir=is_dir))
@@ -245,7 +247,7 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/trace.c", is_dir=is_dir))
 
     def test_ignore_all_subdirectories(self):
-        matches = self.__parse_gitignore_string(["**/"], fake_base_dir="/home/michael")
+        matches = self.__parse_gitignore_string(["**/"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/directory/file", is_dir=is_dir))
@@ -253,7 +255,7 @@ class TestMatch(unittest.TestCase):
         self.assertTrue(matches("/home/michael/directory", is_dir=True))
 
     def test_robert_simple_rules(self):
-        matches = self.__parse_gitignore_string(["__pycache__", "*.py[cod]", ".venv/"], fake_base_dir="/home/robert")
+        matches = self.__parse_gitignore_string(["__pycache__", "*.py[cod]", ".venv/"], mock_base_path="/home/robert")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertFalse(matches("/home/robert/main.py", is_dir=is_dir))
@@ -268,7 +270,7 @@ class TestMatch(unittest.TestCase):
 
     def test_robert_comments(self):
         matches = self.__parse_gitignore_string(
-            ["somematch", "#realcomment", "othermatch", "\\#imnocomment"], fake_base_dir="/home/robert"
+            ["somematch", "#realcomment", "othermatch", "\\#imnocomment"], mock_base_path="/home/robert"
         )
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
@@ -281,7 +283,7 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/robert/#imnocomment", is_dir=is_dir))
 
     def test_robert_wildcard(self):
-        matches = self.__parse_gitignore_string(["hello.*"], fake_base_dir="/home/robert")
+        matches = self.__parse_gitignore_string(["hello.*"], mock_base_path="/home/robert")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/robert/hello.txt", is_dir=is_dir))
@@ -293,7 +295,7 @@ class TestMatch(unittest.TestCase):
                 self.assertFalse(matches("/home/robert/dir/helloX", is_dir=is_dir))
 
     def test_robert_anchored_wildcard(self):
-        matches = self.__parse_gitignore_string(["/hello.*"], fake_base_dir="/home/robert")
+        matches = self.__parse_gitignore_string(["/hello.*"], mock_base_path="/home/robert")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/robert/hello.txt", is_dir=is_dir))
@@ -301,7 +303,7 @@ class TestMatch(unittest.TestCase):
                 self.assertFalse(matches("/home/robert/a/hello.java", is_dir=is_dir))
 
     def test_robert_negation_rules(self):
-        matches = self.__parse_gitignore_string(["*.ignore", "!keep.ignore"], fake_base_dir="/home/robert")
+        matches = self.__parse_gitignore_string(["*.ignore", "!keep.ignore"], mock_base_path="/home/robert")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/robert/trash.ignore", is_dir=is_dir))
@@ -316,7 +318,7 @@ class TestMatch(unittest.TestCase):
         being ignored (matched) correctly.
         """
         with tempfile.TemporaryDirectory() as d:
-            matches = self.__parse_gitignore_string(["*.venv"], fake_base_dir=d)
+            matches = self.__parse_gitignore_string(["*.venv"], mock_base_path=d)
             os.makedirs(f"{d}/.venv/bin")
             os.symlink(sys.executable, f"{d}/.venv/bin/python")
             for is_dir in (False, True):
@@ -355,7 +357,7 @@ class TestMatch(unittest.TestCase):
             os.makedirs(f"{d}/igittigitt01")
             os.symlink(f"{d}/igittigitt01", f"{d}/symlink_to_igittigitt01", target_is_directory=True)
 
-            matches = self.__parse_gitignore_string(["*.txt"], fake_base_dir=f"{d}/symlink_to_igittigitt01")
+            matches = self.__parse_gitignore_string(["*.txt"], mock_base_path=f"{d}/symlink_to_igittigitt01")
 
             for is_dir in (False, True):
                 with self.subTest(i=is_dir):
@@ -379,7 +381,7 @@ class TestMatch(unittest.TestCase):
                 ".test_venv/*",
                 "!test_inverse",
             ],
-            fake_base_dir="/home/robert",
+            mock_base_path="/home/robert",
         )
 
         for is_dir in (False, True):
@@ -412,6 +414,6 @@ class TestMatch(unittest.TestCase):
         self.assertFalse(matches("/home/robert/.test_venv", is_dir=False))
         self.assertTrue(matches("/home/robert/.test_venv", is_dir=True))
 
-    def __parse_gitignore_string(self, data, fake_base_dir):
+    def __parse_gitignore_string(self, data, mock_base_path):
         with unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data="\n".join(data))):
-            return gitignorefile.parse(f"{fake_base_dir}/.gitignore", base_path=fake_base_dir)
+            return gitignorefile.parse(f"{mock_base_path}/.gitignore", base_path=mock_base_path)
