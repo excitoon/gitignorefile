@@ -2,6 +2,8 @@ import collections
 import os
 import re
 
+import pathspec
+
 
 def parse(path, base_path=None):
     if base_path is None:
@@ -41,8 +43,9 @@ class Cache:
 
             parent_gitignore = parent.join(".gitignore")
             if parent_gitignore.isfile():
-                matches = parse(str(parent_gitignore), base_path=parent)
-                add_to_children[parent] = (matches, plain_paths)
+                with open(str(parent_gitignore)) as f:
+                    matches = pathspec.PathSpec.from_lines("gitwildmatch", f)
+                add_to_children[parent] = ((matches, parent), plain_paths)
                 plain_paths = []
 
             else:
@@ -74,7 +77,7 @@ class Cache:
         for plain_path in plain_paths:
             self.__gitignores[plain_path.parts] = self.__gitignores[parent.parts]
 
-        return any((m(path, is_dir=is_dir) for m in self.__gitignores[parent.parts]))
+        return any((m[0].match_file(path.relpath(m[1])) for m in self.__gitignores[parent.parts]))
 
 
 class _Path:
