@@ -157,29 +157,28 @@ class _Path:
         return _Path(self.__parts + (name,))
 
     def relpath(self, base_path):
-        # assert self.__parts[: len(base_path.__parts)] == base_path.__parts
-        return "/".join(self.__parts[len(base_path.__parts) :])
+        if self.__parts[: len(base_path.__parts)] == base_path.__parts:
+            return "/".join(self.__parts[len(base_path.__parts) :])
+
+        else:
+            return None
 
     def parents(self):
         for i in range(len(self.__parts) - 1, 0, -1):
             yield _Path(self.__parts[:i])
 
     def isfile(self):
-        if self.__joined is None:
-            self.__joined = "/".join(self.__parts)
-        return os.path.isfile(self.__joined)
+        return os.path.isfile(str(self))
 
     def isdir(self):
         if self.__is_dir is not None:
             return self.__is_dir
-        if self.__joined is None:
-            self.__joined = "/".join(self.__parts)
-        self.__is_dir = os.path.isdir(self.__joined)
+        self.__is_dir = os.path.isdir(str(self))
         return self.__is_dir
 
     def __str__(self):
         if self.__joined is None:
-            self.__joined = "/".join(self.__parts) if self.__parts != ("",) else "/"
+            self.__joined = os.sep.join(self.__parts) if self.__parts != ("",) else os.sep
         return self.__joined
 
 
@@ -270,22 +269,26 @@ class _IgnoreRules:
         if isinstance(path, str):
             path = _Path(path)
 
-        if is_dir is None:
-            is_dir = path.isdir()  # TODO Pass callable here.
-
         rel_path = path.relpath(self.__base_path)
 
-        if self.__can_return_immediately:
-            return any((r.match(rel_path, is_dir) for r in self.__rules))
+        if rel_path is not None:
+            if is_dir is None:
+                is_dir = path.isdir()  # TODO Pass callable here.
 
-        else:
-            matched = False
-            for rule in self.__rules:
-                if rule.match(rel_path, is_dir):
-                    matched = not rule.negation
+            if self.__can_return_immediately:
+                return any((r.match(rel_path, is_dir) for r in self.__rules))
 
             else:
-                return matched
+                matched = False
+                for rule in self.__rules:
+                    if rule.match(rel_path, is_dir):
+                        matched = not rule.negation
+
+                else:
+                    return matched
+
+        else:
+            return False
 
 
 class _IgnoreRule:

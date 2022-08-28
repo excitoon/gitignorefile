@@ -34,7 +34,7 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/hello.txt", is_dir=is_dir))
                 self.assertTrue(matches("/home/michael/hello.foobar", is_dir=is_dir))
                 self.assertTrue(matches("/home/michael/dir/hello.txt", is_dir=is_dir))
-                if os.name != "nt":  # Invalid path on Windows will be normalized in `os.path.relpath`.
+                if os.name != "nt":  # Invalid paths on Windows will be normalized in `os.path.abspath`.
                     self.assertTrue(matches("/home/michael/hello.", is_dir=is_dir))
                 self.assertFalse(matches("/home/michael/hello", is_dir=is_dir))
                 self.assertFalse(matches("/home/michael/helloX", is_dir=is_dir))
@@ -46,6 +46,13 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/hello.txt", is_dir=is_dir))
                 self.assertTrue(matches("/home/michael/hello.c", is_dir=is_dir))
                 self.assertFalse(matches("/home/michael/a/hello.java", is_dir=is_dir))
+
+    def test_outside_of_base_path(self):
+        matches = self.__parse_gitignore_string(["/hello.*"], mock_base_path="/home/michael")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertFalse(matches("/home/heather/hello.txt", is_dir=is_dir))
+                self.assertFalse(matches("/home/heather/hello.c", is_dir=is_dir))
 
     def test_trailingspaces(self):
         matches = self.__parse_gitignore_string(
@@ -61,7 +68,7 @@ class TestMatch(unittest.TestCase):
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/ignoretrailingspace", is_dir=is_dir))
-                if os.name != "nt":  # Invalid path on Windows will be normalized in `os.path.relpath`.
+                if os.name != "nt":  # Invalid paths on Windows will be normalized in `os.path.abspath`.
                     self.assertFalse(matches("/home/michael/ignoretrailingspace ", is_dir=is_dir))
                     self.assertTrue(matches("/home/michael/partiallyignoredspace ", is_dir=is_dir))
                     self.assertFalse(matches("/home/michael/partiallyignoredspace  ", is_dir=is_dir))
@@ -289,7 +296,7 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/robert/hello.txt", is_dir=is_dir))
                 self.assertTrue(matches("/home/robert/dir/hello.txt", is_dir=is_dir))
                 self.assertFalse(matches("/home/robert/dir/shello.txt", is_dir=is_dir))
-                if os.name != "nt":  # Invalid path on Windows will be normalized in `os.path.relpath`.
+                if os.name != "nt":  # Invalid paths on Windows will be normalized in `os.path.abspath`.
                     self.assertTrue(matches("/home/robert/dir/hello.", is_dir=is_dir))
                 self.assertFalse(matches("/home/robert/dir/hello", is_dir=is_dir))
                 self.assertFalse(matches("/home/robert/dir/helloX", is_dir=is_dir))
