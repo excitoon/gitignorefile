@@ -19,7 +19,7 @@ def parse(path, base_path=None):
 
     # We have negation rules. We can't use a simple "any" to evaluate them.
     # Later rules override earlier rules.
-    return lambda file_path, is_dir=None: _handle_negation(file_path, rules, base_path=base_path, is_dir=is_dir)
+    return lambda file_path, is_dir=None: _match_rules(file_path, rules, base_path=base_path, is_dir=is_dir)
 
 
 def ignore():
@@ -89,7 +89,7 @@ class Cache:
         )  # This parent comes either from first or second loop.
 
 
-def _handle_negation(file_path, rules, base_path=None, is_dir=None):
+def _match_rules(path, rules, base_path=None, is_dir=None):
     """
     Because Git allows for nested `.gitignore` files, a `base_path` value
     is required for correct behavior.
@@ -97,12 +97,12 @@ def _handle_negation(file_path, rules, base_path=None, is_dir=None):
     return_immediately = not any((r.negation for r in rules))
 
     if is_dir is None:
-        is_dir = os.path.isdir(file_path)
+        is_dir = os.path.isdir(path)
 
     if base_path is not None:
-        rel_path = os.path.relpath(file_path, base_path)
+        rel_path = os.path.relpath(path, base_path)
     else:
-        rel_path = file_path
+        rel_path = path
 
     if rel_path.startswith(f".{os.sep}"):
         rel_path = rel_path[2:]
