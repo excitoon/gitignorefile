@@ -29,35 +29,20 @@ def ignored(path, is_dir=None):
 
 class Cache:
     def __init__(self):
-        self.__gitignores = {}
-
-    def __get_parents(self, path, is_dir):
-        if not is_dir:
-            path = os.path.dirname(path)
-            yield path
-
-        while True:
-            new_path = os.path.dirname(path)
-            if not os.path.samefile(path, new_path):
-                yield new_path
-                path = new_path
-            else:
-                break
+        self.__gitignores = {tuple(): []}
 
     def __call__(self, path, is_dir=None):
-        if is_dir is None:
-            is_dir = os.path.isdir(path)
-
+        path = _Path(path)
         add_to_children = {}
         plain_paths = []
-        for parent in self.__get_parents(os.path.abspath(path), is_dir=is_dir):
-            if parent in self.__gitignores:
+        for parent in path.parents():
+            if parent.parts in self.__gitignores:
                 break
 
-            parent_gitignore = os.path.join(parent, ".gitignore")
-            if os.path.isfile(parent_gitignore):
-                p = parse(parent_gitignore, base_path=parent)
-                add_to_children[parent] = (p, plain_paths)
+            parent_gitignore = parent.join(".gitignore")
+            if parent_gitignore.isfile():
+                matches = parse(str(parent_gitignore), base_path=parent)
+                add_to_children[parent] = (matches, plain_paths)
                 plain_paths = []
 
             else:
@@ -65,25 +50,78 @@ class Cache:
 
         else:
             for plain_path in plain_paths:
-                self.__gitignores[plain_path] = []
+                self.__gitignores[plain_path.parts] = []
 
-            if not add_to_children:
+            if add_to_children:
+                plain_paths.clear()
+
+            else:
                 return False
 
         for parent, (_, parent_plain_paths) in reversed(list(add_to_children.items())):
-            self.__gitignores[parent] = []
+            self.__gitignores[parent.parts] = self.__gitignores[parent.parts[:-1]].copy()
             for parent_to_add, (gitignore_to_add, _) in reversed(list(add_to_children.items())):
-                self.__gitignores[parent].append(gitignore_to_add)
+                self.__gitignores[parent.parts].append(gitignore_to_add)
                 if parent_to_add == parent:
                     break
 
-            self.__gitignores[parent].reverse()
-            for plain_path in parent_plain_paths:
-                self.__gitignores[plain_path] = self.__gitignores[parent]
+            self.__gitignores[parent.parts].reverse()
 
-        return any(
-            (m(path, is_dir=is_dir) for m in self.__gitignores[parent])
-        )  # This parent comes either from first or second loop.
+            for plain_path in parent_plain_paths:
+                self.__gitignores[plain_path.parts] = self.__gitignores[parent.parts]
+
+        # This parent comes either from first or second loop.
+        for plain_path in plain_paths:
+            self.__gitignores[plain_path.parts] = self.__gitignores[parent.parts]
+
+        return any((m(path, is_dir=is_dir) for m in self.__gitignores[parent.parts]))
+
+
+class _Path:
+    def __init__(self, path):
+        if isinstance(path, str):
+            abs_path = os.path.abspath(path)
+            self.__parts = tuple(_path_split(abs_path))
+            self.__joined = abs_path
+            self.__is_dir = None
+
+        else:
+            self.__parts = path
+            self.__joined = None
+            self.__is_dir = None
+
+    @property
+    def parts(self):
+        return self.__parts
+
+    def join(self, name):
+        return _Path(self.__parts + (name,))
+
+    def relpath(self, base_path):
+        assert self.__parts[: len(base_path.__parts)] == base_path.__parts
+        return "/".join(self.__parts[len(base_path.__parts) :])
+
+    def parents(self):
+        for i in range(len(self.__parts) - 1, 0, -1):
+            yield _Path(self.__parts[:i])
+
+    def isfile(self):
+        if self.__joined is None:
+            self.__joined = "/".join(self.__parts)
+        return os.path.isfile(self.__joined)
+
+    def isdir(self):
+        if self.__is_dir is not None:
+            return self.__is_dir
+        if self.__joined is None:
+            self.__joined = "/".join(self.__parts)
+        self.__is_dir = os.path.isdir(self.__joined)
+        return self.__is_dir
+
+    def __str__(self):
+        if self.__joined is None:
+            self.__joined = "/".join(self.__parts) if self.__parts != ("",) else "/"
+        return self.__joined
 
 
 def _rule_from_pattern(pattern):
@@ -172,20 +210,21 @@ class _IgnoreRules:
     def __init__(self, rules, base_path):
         self.__rules = rules
         self.__can_return_immediately = not any((r.negation for r in rules))
-        self.__base_path = base_path
+        self.__base_path = _Path(base_path) if isinstance(base_path, str) else base_path
 
     def match(self, path, is_dir=None):
         """
         Because Git allows for nested `.gitignore` files, a `base_path` value
         is required for correct behavior.
         """
+
+        if isinstance(path, str):
+            path = _Path(path)
+
         if is_dir is None:
-            is_dir = os.path.isdir(path)
+            is_dir = path.isdir()  # TODO Pass callable here.
 
-        rel_path = os.path.relpath(path, self.__base_path)
-
-        if rel_path.startswith(f".{os.sep}"):
-            rel_path = rel_path[2:]
+        rel_path = path.relpath(self.__base_path)
 
         if self.__can_return_immediately:
             return any((r.match(rel_path, is_dir) for r in self.__rules))
@@ -220,29 +259,24 @@ class _IgnoreRule:
         return match and (not self.__directory_only or match.group(1) is not None or is_dir)
 
 
-def _seps_non_sep_expr():
-    if os.altsep is None:
-        seps = re.escape(os.sep)
-        non_sep = f"[^{re.escape(os.sep)}]"
+if os.altsep is not None:
+    _all_seps_expr = f"[{re.escape(os.sep)}{re.escape(os.altsep)}]"
+    _path_split = lambda path: re.split(_all_seps_expr, path)
 
-    else:
-        seps = f"[{re.escape(os.sep)}{re.escape(os.altsep)}]"
-        non_sep = f"[^{re.escape(os.sep)}{re.escape(os.altsep)}]"
-
-    return seps, non_sep
+else:
+    _path_split = lambda path: path.split(os.sep)
 
 
 # Frustratingly, python's fnmatch doesn't provide the FNM_PATHNAME
 # option that `.gitignore`'s behavior depends on.
 def _fnmatch_pathname_to_regexp(pattern, directory_only):
     """
-    Implements fnmatch style-behavior, as though with FNM_PATHNAME flagged;
-    the path separator will not match shell-style '*' and '.' wildcards.
+    Implements `fnmatch` style-behavior, as though with `FNM_PATHNAME` flagged;
+    the path separator will not match shell-style `*` and `.` wildcards.
     """
     i, n = 0, len(pattern)
 
-    seps_group, non_sep = _seps_non_sep_expr()
-    res = [f"(?:^|{seps_group})"] if pattern else []  # Empty name means no path fragment.
+    res = ["(?:^|/)"] if pattern else []  # Empty name means no path fragment.
     while i < n:
         c = pattern[i]
         i += 1
@@ -253,19 +287,16 @@ def _fnmatch_pathname_to_regexp(pattern, directory_only):
                     res.append(".*")
                     if pattern[i] == "/":
                         i += 1
-                        res.append(f"{seps_group}?")
+                        res.append("/?")
 
                 else:
-                    res.append(f"{non_sep}*")
+                    res.append(f"[^/]*")
 
             except IndexError:
-                res.append(f"{non_sep}*")
+                res.append(f"[^/]*")
 
         elif c == "?":
-            res.append(non_sep)
-
-        elif c == "/":
-            res.append(seps_group)
+            res.append("[^/]")
 
         elif c == "[":
             j = i
@@ -291,9 +322,9 @@ def _fnmatch_pathname_to_regexp(pattern, directory_only):
             res.append(re.escape(c))
 
     if directory_only:  # In this case we are interested if there is something after slash.
-        res.append(f"({seps_group}.+)?$")
+        res.append(f"(/.+)?$")
 
     else:
-        res.append(f"(?:{seps_group}|$)")
+        res.append(f"(?:/|$)")
 
     return "".join(res)

@@ -1,3 +1,4 @@
+import itertools
 import os
 import stat
 import tempfile
@@ -17,6 +18,12 @@ class TestCache(unittest.TestCase):
                 self.st_ino = id(self)
                 self.st_dev = 0
                 self.st_mode = stat.S_IFREG if is_file else stat.S_IFDIR
+
+            def isdir(self):
+                return self.st_mode == stat.S_IFDIR
+
+            def isfile(self):
+                return self.st_mode == stat.S_IFREG
 
         class Stat:
             def __init__(self, directories, files):
@@ -43,15 +50,19 @@ class TestCache(unittest.TestCase):
                 "/",
             ],
             [
+                "/home/vladimir/project/directory/subdirectory/subdirectory/file.txt",
+                "/home/vladimir/project/directory/subdirectory/subdirectory/file2.txt",
+                "/home/vladimir/project/directory/subdirectory/subdirectory/file3.txt",
                 "/home/vladimir/project/directory/subdirectory/file.txt",
                 "/home/vladimir/project/directory/subdirectory/file2.txt",
                 "/home/vladimir/project/directory/.gitignore",
+                "/home/vladimir/project/directory/file.txt",
+                "/home/vladimir/project/directory/file2.txt",
                 "/home/vladimir/project/file.txt",
                 "/home/vladimir/project/.gitignore",
+                "/home/vladimir/file.txt",
             ],
         )
-
-        statistics = {"open": 0, "stat": 0}
 
         def mock_open(path):
             data = {
@@ -66,23 +77,45 @@ class TestCache(unittest.TestCase):
             except KeyError:
                 raise FileNotFoundError()
 
-        def mock_stat(path):
-            statistics["stat"] += 1
-            return my_stat(path)
+        def mock_isdir(path):
+            statistics["isdir"] += 1
+            try:
+                return my_stat(path).isdir()
+            except FileNotFoundError:
+                return False
 
-        with unittest.mock.patch("builtins.open", mock_open):
-            with unittest.mock.patch("os.stat", mock_stat):
-                matches = gitignorefile.Cache()
-                self.assertTrue(matches("/home/vladimir/project/directory/subdirectory/file.txt"))
-                self.assertTrue(matches("/home/vladimir/project/directory/subdirectory/file2.txt"))
-                self.assertTrue(matches("/home/vladimir/project/directory/file.txt"))
-                self.assertTrue(matches("/home/vladimir/project/directory/file2.txt"))
-                self.assertFalse(matches("/home/vladimir/project/file.txt"))
+        def mock_isfile(path):
+            statistics["isfile"] += 1
+            try:
+                return my_stat(path).isfile()
+            except FileNotFoundError:
+                return False
 
-        self.assertEqual(statistics["open"], 2)
+        data = {
+            "/home/vladimir/project/directory/subdirectory/file.txt": True,
+            "/home/vladimir/project/directory/subdirectory/file2.txt": True,
+            "/home/vladimir/project/directory/subdirectory/subdirectory/file.txt": True,
+            "/home/vladimir/project/directory/subdirectory/subdirectory/file2.txt": True,
+            "/home/vladimir/project/directory/subdirectory/subdirectory/file3.txt": False,
+            "/home/vladimir/project/directory/file.txt": True,
+            "/home/vladimir/project/directory/file2.txt": True,
+            "/home/vladimir/project/file.txt": False,
+            "/home/vladimir/file.txt": False,  # No rules and no `isdir` calls for this file.
+        }
 
-        # On Windows and Python 3.7 `os.path.isdir()` does not use `os.stat`. See `Modules/getpath.c`.
-        self.assertIn(statistics["stat"], (6 * (2 + 1) + 5, 6 * (2 + 1)))
+        for permutation in itertools.islice(itertools.permutations(data.items()), 0, None, 100):
+            statistics = {"open": 0, "isdir": 0, "isfile": 0}
+
+            with unittest.mock.patch("builtins.open", mock_open):
+                with unittest.mock.patch("os.path.isdir", mock_isdir):
+                    with unittest.mock.patch("os.path.isfile", mock_isfile):
+                        matches = gitignorefile.Cache()
+                        for path, expected in permutation:
+                            self.assertEqual(matches(path), expected)
+
+            self.assertEqual(statistics["open"], 2)
+            self.assertEqual(statistics["isdir"], len(data) - 1)
+            self.assertEqual(statistics["isfile"], 7)  # Unique path fragments.
 
     def test_wrong_symlink(self):
         with tempfile.TemporaryDirectory() as d:
