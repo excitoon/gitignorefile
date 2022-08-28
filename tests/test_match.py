@@ -240,6 +240,26 @@ class TestMatch(unittest.TestCase):
         self.assertFalse(matches("/home/michael/file.yaml", is_dir=True))
         self.assertFalse(matches("/home/michael/dir.yaml/file.sql", is_dir=False))
 
+    def test_excludes_nested(self):
+        matches = self.__parse_gitignore_string(["/*", "!/foo", "/foo/*", "!/foo/bar"], mock_base_path="/home/michael")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/michael/oo", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/foo", is_dir=is_dir))
+                self.assertTrue(matches("/home/michael/foo/ar", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/foo/bar", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/foo/bar/hey", is_dir=is_dir))
+
+    def test_excludes_direct(self):
+        matches = self.__parse_gitignore_string(["/*", "!/foo/bar"], mock_base_path="/home/michael")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/michael/oo", is_dir=is_dir))
+                self.assertTrue(matches("/home/michael/foo", is_dir=is_dir))
+                self.assertTrue(matches("/home/michael/foo/ar", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/foo/bar", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/foo/bar/hey", is_dir=is_dir))
+
     def test_exclude_from_subdirectory(self):
         matches = self.__parse_gitignore_string(
             ["*.log", "!important/*.log", "trace.*"], mock_base_path="/home/michael"
@@ -387,6 +407,7 @@ class TestMatch(unittest.TestCase):
                 ".test_venv/**",
                 ".test_venv/*",
                 "!test_inverse",
+                "!hello.pyc",
             ],
             mock_base_path="/home/robert",
         )
@@ -398,9 +419,12 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/robert/test__pycache__/excluded", is_dir=is_dir))
                 self.assertTrue(matches("/home/robert/test__pycache__/excluded/excluded", is_dir=is_dir))
                 self.assertTrue(matches("/home/robert/test__pycache__/excluded/excluded/excluded.txt", is_dir=is_dir))
-                self.assertFalse(
-                    matches("/home/robert/test__pycache__/excluded/excluded/test_inverse")
-                )  # FIXME This file would be actually ignored. :(
+                # This file will actually be ignored by Git because it won't go into ignored directory
+                # `test__pycache__` while globbing. If you are globbing through the directory tree, check that parent
+                # directory is not ignored (`!/foo`, `/foo/*`, `!/foo/bar`) and if it is, don't call `matches` on
+                # nested file.
+                self.assertFalse(matches("/home/robert/test__pycache__/excluded/excluded/test_inverse"))
+                self.assertFalse(matches("/home/robert/hello.pyc"))
                 self.assertTrue(matches("/home/robert/test__pycache__/some_file.txt", is_dir=is_dir))
                 self.assertTrue(matches("/home/robert/test__pycache__/test", is_dir=is_dir))
                 self.assertFalse(matches("/home/robert/.test_gitignore", is_dir=is_dir))

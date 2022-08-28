@@ -8,7 +8,7 @@ with open(f"{os.path.dirname(os.path.abspath(__file__))}/requirements.txt") as r
     with open(f"{os.path.dirname(os.path.abspath(__file__))}/README.md") as readme:
         setuptools.setup(
             name="gitignorefile",
-            version="1.0.9",
+            version="1.1.0",
             description="A spec-compliant `.gitignore` parser for Python",
             long_description=readme.read(),
             long_description_content_type="text/markdown",
