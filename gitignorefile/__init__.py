@@ -3,15 +3,15 @@ import os
 import re
 
 
-def parse(full_path, base_path=None):
+def parse(path, base_path=None):
     if base_path is None:
-        base_path = os.path.dirname(full_path) or os.path.dirname(os.path.abspath(full_path))
+        base_path = os.path.dirname(path) or os.path.dirname(os.path.abspath(path))
 
     rules = []
-    with open(full_path) as ignore_file:
+    with open(path) as ignore_file:
         for i, line in enumerate(ignore_file, start=1):
             line = line.rstrip("\r\n")
-            rule = _rule_from_pattern(line, source=(full_path, i))
+            rule = _rule_from_pattern(line, source=(path, i))
             if rule:
                 rules.append(rule)
 
@@ -269,8 +269,10 @@ def _fnmatch_pathname_to_regexp(pattern, directory_only):
                     if pattern[i] == "/":
                         i += 1
                         res.append(f"{seps_group}?")
+
                 else:
                     res.append(f"{non_sep}*")
+
             except IndexError:
                 res.append(f"{non_sep}*")
 
