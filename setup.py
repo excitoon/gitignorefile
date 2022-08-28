@@ -8,7 +8,7 @@ with open(f"{os.path.dirname(os.path.abspath(__file__))}/requirements.txt") as r
     with open(f"{os.path.dirname(os.path.abspath(__file__))}/README.md") as readme:
         setuptools.setup(
             name="gitignorefile",
-            version="1.1.1",
+            version="1.1.2",
             description="A spec-compliant `.gitignore` parser for Python",
             long_description=readme.read(),
             long_description_content_type="text/markdown",
@@ -21,6 +21,7 @@ with open(f"{os.path.dirname(os.path.abspath(__file__))}/requirements.txt") as r
                 "License :: OSI Approved :: MIT License",
                 "Operating System :: OS Independent",
                 "Programming Language :: Python :: 3 :: Only",
+                "Programming Language :: Python :: 3.6",
                 "Programming Language :: Python :: 3.7",
                 "Programming Language :: Python :: 3.8",
                 "Programming Language :: Python :: 3.9",

@@ -1,3 +1,4 @@
+import io
 import itertools
 import os
 import stat
@@ -74,7 +75,7 @@ class TestCache(unittest.TestCase):
 
                     statistics["open"] += 1
                     try:
-                        return unittest.mock.mock_open(read_data="\n".join(data[normalize_path(path)]))(path)
+                        return io.StringIO("\n".join(data[normalize_path(path)]))
 
                     except KeyError:
                         raise FileNotFoundError()
@@ -105,7 +106,8 @@ class TestCache(unittest.TestCase):
                     "/home/vladimir/file.txt": False,  # No rules and no `isdir` calls for this file.
                 }
 
-                for permutation in itertools.islice(itertools.permutations(data.items()), 0, None, 200):
+                # 9! == 362880 combinations.
+                for permutation in itertools.islice(itertools.permutations(data.items()), 0, None, 6 * 8):
                     statistics = {"open": 0, "isdir": 0, "isfile": 0}
 
                     with unittest.mock.patch("builtins.open", mock_open):

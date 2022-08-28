@@ -1,3 +1,4 @@
+import io
 import os
 import sys
 import tempfile
@@ -491,5 +492,5 @@ class TestMatch(unittest.TestCase):
         self.assertTrue(matches("/home/robert/.test_venv", is_dir=True))
 
     def __parse_gitignore_string(self, data, mock_base_path):
-        with unittest.mock.patch("builtins.open", unittest.mock.mock_open(read_data="\n".join(data))):
+        with unittest.mock.patch("builtins.open", lambda _: io.StringIO("\n".join(data))):
             return gitignorefile.parse(f"{mock_base_path}/.gitignore", base_path=mock_base_path)
