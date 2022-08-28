@@ -15,11 +15,7 @@ def parse(path, base_path=None):
             if rule:
                 rules.append(rule)
 
-    # TODO probably combine to single regexp.
-
-    # We have negation rules. We can't use a simple "any" to evaluate them.
-    # Later rules override earlier rules.
-    return lambda file_path, is_dir=None: _match_rules(file_path, rules, base_path=base_path, is_dir=is_dir)
+    return _IgnoreRules(rules, base_path).match
 
 
 def ignore():
@@ -58,8 +54,9 @@ class Cache:
             if parent in self.__gitignores:
                 break
 
-            elif os.path.isfile(os.path.join(parent, ".gitignore")):
-                p = parse(os.path.join(parent, ".gitignore"), base_path=parent)
+            parent_gitignore = os.path.join(parent, ".gitignore")
+            if os.path.isfile(parent_gitignore):
+                p = parse(parent_gitignore, base_path=parent)
                 add_to_children[parent] = (p, plain_paths)
                 plain_paths = []
 
@@ -87,36 +84,6 @@ class Cache:
         return any(
             (m(path, is_dir=is_dir) for m in self.__gitignores[parent])
         )  # This parent comes either from first or second loop.
-
-
-def _match_rules(path, rules, base_path=None, is_dir=None):
-    """
-    Because Git allows for nested `.gitignore` files, a `base_path` value
-    is required for correct behavior.
-    """
-    return_immediately = not any((r.negation for r in rules))
-
-    if is_dir is None:
-        is_dir = os.path.isdir(path)
-
-    if base_path is not None:
-        rel_path = os.path.relpath(path, base_path)
-    else:
-        rel_path = path
-
-    if rel_path.startswith(f".{os.sep}"):
-        rel_path = rel_path[2:]
-
-    matched = False
-    for rule in rules:
-        if rule.match(rel_path, is_dir):
-            if return_immediately:
-                return True
-
-            matched = not rule.negation
-
-    else:
-        return matched
 
 
 def _rule_from_pattern(pattern):
@@ -199,6 +166,38 @@ def _rule_from_pattern(pattern):
         regexp = f"^{regexp}"
 
     return _IgnoreRule(regexp, negation, directory_only)
+
+
+class _IgnoreRules:
+    def __init__(self, rules, base_path):
+        self.__rules = rules
+        self.__can_return_immediately = not any((r.negation for r in rules))
+        self.__base_path = base_path
+
+    def match(self, path, is_dir=None):
+        """
+        Because Git allows for nested `.gitignore` files, a `base_path` value
+        is required for correct behavior.
+        """
+        if is_dir is None:
+            is_dir = os.path.isdir(path)
+
+        rel_path = os.path.relpath(path, self.__base_path)
+
+        if rel_path.startswith(f".{os.sep}"):
+            rel_path = rel_path[2:]
+
+        if self.__can_return_immediately:
+            return any((r.match(rel_path, is_dir) for r in self.__rules))
+
+        else:
+            matched = False
+            for rule in self.__rules:
+                if rule.match(rel_path, is_dir):
+                    matched = not rule.negation
+
+            else:
+                return matched
 
 
 class _IgnoreRule:
