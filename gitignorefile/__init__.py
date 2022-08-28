@@ -203,18 +203,16 @@ def _rule_from_pattern(pattern, source=None):
         regexp=regexp,
         negation=negation,
         directory_only=directory_only,
-        anchored=anchored,
         source=source,
     )
 
 
 _IGNORE_RULE_FIELDS = [
     "pattern",
-    "regexp",  # Basic values
+    "regexp",
     "negation",
     "directory_only",
-    "anchored",  # Behavior flags
-    "source",  # (file, line) tuple for reporting
+    "source",  # (file, line)
 ]
 
 
