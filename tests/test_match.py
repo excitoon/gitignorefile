@@ -209,6 +209,12 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/b/a", is_dir=is_dir))
                 self.assertTrue(matches("/home/michael/a/b", is_dir=is_dir))
 
+    def test_exclude_directories(self):
+        matches = self.__parse_gitignore_string(["*.yaml", "!*.yaml/"], fake_base_dir="/home/michael")
+        self.assertTrue(matches("/home/michael/file.yaml", is_dir=False))
+        self.assertFalse(matches("/home/michael/file.yaml", is_dir=True))
+        self.assertFalse(matches("/home/michael/dir.yaml/file.sql", is_dir=False))
+
     def test_ignore_all_subdirectories(self):
         matches = self.__parse_gitignore_string(["**/"], fake_base_dir="/home/michael")
         for is_dir in (False, True):
