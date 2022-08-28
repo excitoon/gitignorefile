@@ -9,9 +9,9 @@ def parse(path, base_path=None):
 
     rules = []
     with open(path) as ignore_file:
-        for i, line in enumerate(ignore_file, start=1):
+        for line in ignore_file:
             line = line.rstrip("\r\n")
-            rule = _rule_from_pattern(line, source=(path, i))
+            rule = _rule_from_pattern(line)
             if rule:
                 rules.append(rule)
 
@@ -119,7 +119,7 @@ def _match_rules(path, rules, base_path=None, is_dir=None):
         return matched
 
 
-def _rule_from_pattern(pattern, source=None):
+def _rule_from_pattern(pattern):
     """
     Take a `.gitignore` match pattern, such as "*.py[cod]" or "**/*.bak",
     and return an `_IgnoreRule` suitable for matching against files and
@@ -198,39 +198,27 @@ def _rule_from_pattern(pattern, source=None):
     if anchored:
         regexp = f"^{regexp}"
 
-    return _IgnoreRule(
-        pattern=orig_pattern,
-        regexp=regexp,
-        negation=negation,
-        directory_only=directory_only,
-        source=source,
-    )
+    return _IgnoreRule(regexp, negation, directory_only)
 
 
-_IGNORE_RULE_FIELDS = [
-    "pattern",
-    "regexp",
-    "negation",
-    "directory_only",
-    "source",  # (file, line)
-]
+class _IgnoreRule:
+    def __init__(self, regexp, negation, directory_only):
+        self.__regexp = re.compile(regexp)
+        self.__negation = negation
+        self.__directory_only = directory_only
 
-
-class _IgnoreRule(collections.namedtuple("_IgnoreRule_", _IGNORE_RULE_FIELDS)):
-    def __str__(self):
-        return self.pattern
-
-    def __repr__(self):
-        return "".join(["_IgnoreRule('", self.pattern, "')"])
+    @property
+    def negation(self):
+        return self.__negation
 
     def match(self, rel_path, is_dir):
-        match = re.search(self.regexp, rel_path)
+        match = self.__regexp.search(rel_path)
 
         # If we need a directory, check there is something after slash and if there is not, target must be a directory.
         # If there is something after slash then it's a directory irrelevant to type of target.
         # `self.directory_only` implies we have group number 1.
         # N.B. Question mark inside a group without a name can shift indices. :(
-        return match and (not self.directory_only or match.group(1) is not None or is_dir)
+        return match and (not self.__directory_only or match.group(1) is not None or is_dir)
 
 
 def _seps_non_sep_expr():
