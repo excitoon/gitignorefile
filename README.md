@@ -79,3 +79,4 @@ matches("/home/michael/project/__pycache__") # True
 - https://github.com/snark/ignorance/ by Steve Cook
 - https://github.com/mherrmann/gitignore_parser by Michael Herrmann
 - https://github.com/bitranox/igittigitt by Robert Nowotny
+- https://github.com/cpburnz/python-path-specification by Caleb Burns
