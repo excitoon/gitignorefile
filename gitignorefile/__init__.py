@@ -110,9 +110,10 @@ def _handle_negation(file_path, rules, base_path=None, is_dir=None):
     matched = False
     for rule in rules:
         if rule.match(rel_path, is_dir):
-            matched = not rule.negation
-            if matched and return_immediately:
+            if return_immediately:
                 return True
+
+            matched = not rule.negation
 
     else:
         return matched
