@@ -50,6 +50,7 @@ class Cache:
 
         else:
             for plain_path in plain_paths:
+                # assert plain_path.parts not in self.__gitignores
                 self.__gitignores[plain_path.parts] = []
 
             if add_to_children:
@@ -59,6 +60,7 @@ class Cache:
                 return False
 
         for parent, (_, parent_plain_paths) in reversed(list(add_to_children.items())):
+            # assert parent.parts not in self.__gitignores
             self.__gitignores[parent.parts] = self.__gitignores[parent.parts[:-1]].copy()
             for parent_to_add, (gitignore_to_add, _) in reversed(list(add_to_children.items())):
                 self.__gitignores[parent.parts].append(gitignore_to_add)
@@ -68,10 +70,12 @@ class Cache:
             self.__gitignores[parent.parts].reverse()
 
             for plain_path in parent_plain_paths:
+                # assert plain_path.parts not in self.__gitignores
                 self.__gitignores[plain_path.parts] = self.__gitignores[parent.parts]
 
         # This parent comes either from first or second loop.
         for plain_path in plain_paths:
+            # assert plain_path.parts not in self.__gitignores
             self.__gitignores[plain_path.parts] = self.__gitignores[parent.parts]
 
         return any((m(path, is_dir=is_dir) for m in self.__gitignores[parent.parts]))
@@ -98,7 +102,7 @@ class _Path:
         return _Path(self.__parts + (name,))
 
     def relpath(self, base_path):
-        assert self.__parts[: len(base_path.__parts)] == base_path.__parts
+        # assert self.__parts[: len(base_path.__parts)] == base_path.__parts
         return "/".join(self.__parts[len(base_path.__parts) :])
 
     def parents(self):
@@ -198,11 +202,7 @@ def _rule_from_pattern(pattern):
                 pattern = pattern[:i]
         i -= 1
 
-    regexp = _fnmatch_pathname_to_regexp(pattern, directory_only)
-
-    if anchored:
-        regexp = f"^{regexp}"
-
+    regexp = _fnmatch_pathname_to_regexp(pattern, anchored, directory_only)
     return _IgnoreRule(regexp, negation, directory_only)
 
 
@@ -244,19 +244,24 @@ class _IgnoreRule:
         self.__regexp = re.compile(regexp)
         self.__negation = negation
         self.__directory_only = directory_only
+        self.__match = self.__regexp.match
+
+    @property
+    def regexp(self):
+        return self.__regexp
 
     @property
     def negation(self):
         return self.__negation
 
     def match(self, rel_path, is_dir):
-        match = self.__regexp.search(rel_path)
+        m = self.__match(rel_path)
 
         # If we need a directory, check there is something after slash and if there is not, target must be a directory.
         # If there is something after slash then it's a directory irrelevant to type of target.
         # `self.directory_only` implies we have group number 1.
         # N.B. Question mark inside a group without a name can shift indices. :(
-        return match and (not self.__directory_only or match.group(1) is not None or is_dir)
+        return m and (not self.__directory_only or m.group(1) is not None or is_dir)
 
 
 if os.altsep is not None:
@@ -269,14 +274,22 @@ else:
 
 # Frustratingly, python's fnmatch doesn't provide the FNM_PATHNAME
 # option that `.gitignore`'s behavior depends on.
-def _fnmatch_pathname_to_regexp(pattern, directory_only):
+def _fnmatch_pathname_to_regexp(pattern, anchored, directory_only):
     """
     Implements `fnmatch` style-behavior, as though with `FNM_PATHNAME` flagged;
     the path separator will not match shell-style `*` and `.` wildcards.
     """
+
+    if not pattern:
+        if directory_only:
+            return "[^/]+(/.+)?$"  # Empty name means no path fragment.
+
+        else:
+            return ".*"
+
     i, n = 0, len(pattern)
 
-    res = ["(?:^|/)"] if pattern else []  # Empty name means no path fragment.
+    res = ["(?:^|.+/)" if not anchored else ""]
     while i < n:
         c = pattern[i]
         i += 1
@@ -290,10 +303,10 @@ def _fnmatch_pathname_to_regexp(pattern, directory_only):
                         res.append("/?")
 
                 else:
-                    res.append(f"[^/]*")
+                    res.append("[^/]*")
 
             except IndexError:
-                res.append(f"[^/]*")
+                res.append("[^/]*")
 
         elif c == "?":
             res.append("[^/]")
@@ -322,9 +335,9 @@ def _fnmatch_pathname_to_regexp(pattern, directory_only):
             res.append(re.escape(c))
 
     if directory_only:  # In this case we are interested if there is something after slash.
-        res.append(f"(/.+)?$")
+        res.append("(/.+)?$")
 
     else:
-        res.append(f"(?:/|$)")
+        res.append("(?:/.+)?$")
 
     return "".join(res)

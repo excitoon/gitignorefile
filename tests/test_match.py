@@ -108,6 +108,14 @@ class TestMatch(unittest.TestCase):
         self.assertTrue(matches("/home/michael/a/doc/frotz", is_dir=True))
         self.assertFalse(matches("/home/michael/a/b/doc/frotz", is_dir=False))
         self.assertTrue(matches("/home/michael/a/b/doc/frotz", is_dir=True))
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/michael/doc/frotz/file", is_dir=False))
+                self.assertTrue(matches("/home/michael/doc/frotz/file", is_dir=True))
+                self.assertTrue(matches("/home/michael/a/doc/frotz/file", is_dir=False))
+                self.assertTrue(matches("/home/michael/a/doc/frotz/file", is_dir=True))
+                self.assertTrue(matches("/home/michael/a/b/doc/frotz/file", is_dir=False))
+                self.assertTrue(matches("/home/michael/a/b/doc/frotz/file", is_dir=True))
 
     def test_second_level_files(self):
         matches = self.__parse_gitignore_string(["doc/frotz"], fake_base_dir="/home/michael")
@@ -123,6 +131,16 @@ class TestMatch(unittest.TestCase):
                 self.assertTrue(matches("/home/michael/.venv", is_dir=is_dir))
                 self.assertTrue(matches("/home/michael/.venv/folder", is_dir=is_dir))
                 self.assertTrue(matches("/home/michael/.venv/file.txt", is_dir=is_dir))
+
+    def test_ignore_core_file(self):
+        matches = self.__parse_gitignore_string(["core", "!core/"], fake_base_dir="/home/michael")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertFalse(matches("/home/michael/core/a", is_dir=is_dir))
+        self.assertTrue(matches("/home/michael/core", is_dir=False))
+        self.assertFalse(matches("/home/michael/core", is_dir=True))
+        self.assertTrue(matches("/home/michael/a/core", is_dir=False))
+        self.assertFalse(matches("/home/michael/a/core", is_dir=True))
 
     def test_ignore_directory(self):
         matches = self.__parse_gitignore_string([".venv/"], fake_base_dir="/home/michael")
