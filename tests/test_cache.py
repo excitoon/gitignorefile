@@ -108,18 +108,19 @@ class TestCache(unittest.TestCase):
 
                 # 9! == 362880 combinations.
                 for permutation in itertools.islice(itertools.permutations(data.items()), 0, None, 6 * 8):
-                    statistics = {"open": 0, "isdir": 0, "isfile": 0}
+                    with self.subTest(i=permutation):
+                        statistics = {"open": 0, "isdir": 0, "isfile": 0}
 
-                    with unittest.mock.patch("builtins.open", mock_open):
-                        with unittest.mock.patch("os.path.isdir", mock_isdir):
-                            with unittest.mock.patch("os.path.isfile", mock_isfile):
-                                matches = gitignorefile.Cache(ignore_names=[ignore_file_name])
-                                for path, expected in permutation:
-                                    self.assertEqual(matches(path), expected)
+                        with unittest.mock.patch("builtins.open", mock_open):
+                            with unittest.mock.patch("os.path.isdir", mock_isdir):
+                                with unittest.mock.patch("os.path.isfile", mock_isfile):
+                                    matches = gitignorefile.Cache(ignore_names=[ignore_file_name])
+                                    for path, expected in permutation:
+                                        self.assertEqual(matches(path), expected)
 
-                    self.assertEqual(statistics["open"], 2)
-                    self.assertEqual(statistics["isdir"], len(data) - 1)
-                    self.assertEqual(statistics["isfile"], 7)  # Unique path fragments.
+                        self.assertEqual(statistics["open"], 2)
+                        self.assertEqual(statistics["isdir"], len(data) - 1)
+                        self.assertEqual(statistics["isfile"], 7)  # Unique path fragments.
 
     def test_wrong_symlink(self):
         with tempfile.TemporaryDirectory() as d:
