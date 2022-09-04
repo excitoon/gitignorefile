@@ -111,7 +111,7 @@ class TestCache(unittest.TestCase):
                     with unittest.mock.patch("builtins.open", mock_open):
                         with unittest.mock.patch("os.path.isdir", mock_isdir):
                             with unittest.mock.patch("os.path.isfile", mock_isfile):
-                                matches = gitignorefile.Cache(ignore_file_sources=[ignore_file_name])
+                                matches = gitignorefile.Cache(ignore_names=[ignore_file_name])
                                 for path, expected in permutation:
                                     self.assertEqual(matches(path), expected)
 

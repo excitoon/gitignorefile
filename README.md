@@ -81,7 +81,7 @@ You could override files, that will be used to fetch ignore rules. Default value
 ```python3
 import gitignorefile
 
-matches = gitignorefile.Cache(ignore_file_sources=[".mylovelytoolignore"])
+matches = gitignorefile.Cache(ignore_names=[".mylovelytoolignore"])
 matches("/home/michael/project/main.py") # False
 matches("/home/michael/project/main.pyc") # True
 matches("/home/michael/project/dir/main.pyc") # True
