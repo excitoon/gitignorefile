@@ -235,8 +235,18 @@ def _rule_from_pattern(pattern):
         anchored = False
     if pattern.startswith("/"):
         pattern = pattern[1:]
+
     if pattern.endswith("/"):
+        directory_only = True
         pattern = pattern[:-1]
+
+    elif pattern.endswith("/*"):
+        directory_only = True
+        pattern = pattern[:-2]
+
+    elif pattern.endswith("/**"):
+        directory_only = True
+        pattern = pattern[:-3]
 
     # patterns with leading hashes are escaped with a backslash in front, unescape it
     if pattern.startswith("\\#"):
@@ -349,7 +359,7 @@ def _fnmatch_pathname_to_regexp(pattern, anchored, directory_only):
                 i += 1
                 if i < n and pattern[i] == "/":
                     i += 1
-                    res.append("(.+/)?")  # `/**/` matches `/`.
+                    res.append("(?:.+/)?")  # `/**/` matches `/`.
 
                 else:
                     res.append(".*")

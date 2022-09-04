@@ -175,8 +175,9 @@ class TestMatch(unittest.TestCase):
         matches = self.__parse_gitignore_string([".venv/*"], mock_base_path="/home/michael")
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
-                self.assertFalse(matches("/home/michael/.venv", is_dir=is_dir))
                 self.assertTrue(matches("/home/michael/.venv/folder", is_dir=is_dir))
+        self.assertFalse(matches("/home/michael/.venv", is_dir=False))
+        self.assertTrue(matches("/home/michael/.venv", is_dir=True))
 
     def test_negation(self):
         matches = self.__parse_gitignore_string(
@@ -291,10 +292,11 @@ class TestMatch(unittest.TestCase):
         for is_dir in (False, True):
             with self.subTest(i=is_dir):
                 self.assertTrue(matches("/home/michael/oo", is_dir=is_dir))
-                self.assertFalse(matches("/home/michael/foo", is_dir=is_dir))
                 self.assertTrue(matches("/home/michael/foo/ar", is_dir=is_dir))
                 self.assertFalse(matches("/home/michael/foo/bar", is_dir=is_dir))
                 self.assertFalse(matches("/home/michael/foo/bar/hey", is_dir=is_dir))
+        self.assertFalse(matches("/home/michael/foo", is_dir=False))
+        self.assertTrue(matches("/home/michael/foo", is_dir=True))
 
     def test_excludes_direct(self):
         matches = self.__parse_gitignore_string(["/*", "!/foo/bar"], mock_base_path="/home/michael")
@@ -491,6 +493,27 @@ class TestMatch(unittest.TestCase):
         self.assertFalse(matches("/home/robert/.test_venv", is_dir=False))
         self.assertTrue(matches("/home/robert/.test_venv", is_dir=True))
 
+    def test_robert_parse_rule_files_anchoring_directory(self):
+        matches = self.__parse_gitignore_string([".test_venv/"], mock_base_path="/home/robert")
+        self.assertFalse(matches("/home/robert/.test_venv", is_dir=False))
+        self.assertTrue(matches("/home/robert/.test_venv", is_dir=True))
+        self.assertFalse(matches("/home/robert/a/.test_venv", is_dir=False))
+        self.assertTrue(matches("/home/robert/a/.test_venv", is_dir=True))
+
+    def test_robert_parse_rule_files_anchoring_directory_with_asterisk(self):
+        matches = self.__parse_gitignore_string([".test_venv/*"], mock_base_path="/home/robert")
+        self.assertFalse(matches("/home/robert/.test_venv", is_dir=False))
+        self.assertTrue(matches("/home/robert/.test_venv", is_dir=True))
+        self.assertFalse(matches("/home/robert/a/.test_venv", is_dir=False))
+        self.assertFalse(matches("/home/robert/a/.test_venv", is_dir=True))
+
+    def test_robert_parse_rule_files_anchoring_directory_with_double_asterisk(self):
+        matches = self.__parse_gitignore_string([".test_venv/**"], mock_base_path="/home/robert")
+        self.assertFalse(matches("/home/robert/.test_venv", is_dir=False))
+        self.assertTrue(matches("/home/robert/.test_venv", is_dir=True))
+        self.assertFalse(matches("/home/robert/a/.test_venv", is_dir=False))
+        self.assertFalse(matches("/home/robert/a/.test_venv", is_dir=True))
+
     def test_caleb_1_match_file(self):
         matches = self.__parse_gitignore_string(["*.txt", "!b.txt"], mock_base_path="/home/caleb")
         for is_dir in (False, True):
@@ -597,21 +620,11 @@ class TestMatch(unittest.TestCase):
                 self.assertFalse(matches("/home/caleb/foo/an/absolute/file/path", is_dir=is_dir))
 
     def test_caleb_01_absolute_ignore(self):
-        matches = self.__parse_gitignore_string(["!/foo/build"], mock_base_path="/home/caleb")
-        results = set(
-            pattern.match(
-                [
-                    "build/file.py",
-                    "foo/build/file.py",
-                ]
-            )
-        )
-        self.assertEqual(
-            results,
-            {
-                "foo/build/file.py",
-            },
-        )
+        matches = self.__parse_gitignore_string(["file.py", "!/foo/build"], mock_base_path="/home/caleb")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/caleb/build/file.py", is_dir=is_dir))
+                self.assertFalse(matches("/home/caleb/foo/build/file.py", is_dir=is_dir))
 
     def test_caleb_01_absolute_root(self):
         matches = self.__parse_gitignore_string(["/"], mock_base_path="/home/caleb")
@@ -690,46 +703,20 @@ class TestMatch(unittest.TestCase):
 
     def test_caleb_01_relative(self):
         matches = self.__parse_gitignore_string(["spam"], mock_base_path="/home/caleb")
-        results = set(
-            pattern.match(
-                [
-                    "spam",
-                    "spam/",
-                    "foo/spam",
-                    "spam/foo",
-                    "foo/spam/bar",
-                ]
-            )
-        )
-        self.assertEqual(
-            results,
-            {
-                "spam",
-                "spam/",
-                "foo/spam",
-                "spam/foo",
-                "foo/spam/bar",
-            },
-        )
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/caleb/spam", is_dir=is_dir))
+                self.assertTrue(matches("/home/caleb/foo/spam", is_dir=is_dir))
+                self.assertTrue(matches("/home/caleb/spam/foo", is_dir=is_dir))
+                self.assertTrue(matches("/home/caleb/foo/spam/bar", is_dir=is_dir))
 
     def test_caleb_01_relative_nested(self):
         matches = self.__parse_gitignore_string(["foo/spam"], mock_base_path="/home/caleb")
-        results = set(
-            pattern.match(
-                [
-                    "foo/spam",
-                    "foo/spam/bar",
-                    "bar/foo/spam",
-                ]
-            )
-        )
-        self.assertEqual(
-            results,
-            {
-                "foo/spam",
-                "foo/spam/bar",
-            },
-        )
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/caleb/foo/spam", is_dir=is_dir))
+                self.assertTrue(matches("/home/caleb/foo/spam/bar", is_dir=is_dir))
+                self.assertFalse(matches("/home/caleb/bar/foo/spam", is_dir=is_dir))
 
     def test_caleb_02_comment(self):
         matches = self.__parse_gitignore_string(["# Cork soakers."], mock_base_path="/home/caleb")
@@ -756,32 +743,13 @@ class TestMatch(unittest.TestCase):
                 self.assertFalse(matches("/home/caleb/foo/temp/bar", is_dir=is_dir))
 
     def test_caleb_03_child_double_asterisk(self):
-        """
-        Tests a directory name with a double-asterisk child
-        directory.
-
-        This should match:
-
-            spam/bar
-
-        This should **not** match (according to git check-ignore (v2.4.1)):
-
-            foo/spam/bar
-        """
-        regex, include = GitWildMatchPattern.pattern_to_regex("spam/**")
-        self.assertTrue(include)
-        self.assertEqual(regex, "^spam/.*$")
-
-        pattern = GitWildMatchPattern(re.compile(regex), include)
-        results = set(
-            pattern.match(
-                [
-                    "spam/bar",
-                    "foo/spam/bar",
-                ]
-            )
-        )
-        self.assertEqual(results, {"spam/bar"})
+        matches = self.__parse_gitignore_string(["spam/**"], mock_base_path="/home/caleb")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/caleb/spam/bar", is_dir=is_dir))
+                self.assertFalse(matches("/home/caleb/foo/spam/bar", is_dir=is_dir))
+        self.assertFalse(matches("/home/caleb/spam", is_dir=False))
+        self.assertTrue(matches("/home/caleb/spam", is_dir=True))
 
     def test_caleb_03_inner_double_asterisk(self):
         """
