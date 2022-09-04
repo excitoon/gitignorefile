@@ -29,7 +29,7 @@ def ignored(path, is_dir=None):
 
 class Cache:
     def __init__(self):
-        self.__gitignores = {tuple(): []}
+        self.__gitignores = {}
 
     def __call__(self, path, is_dir=None):
         path = _Path(path)
@@ -49,15 +49,12 @@ class Cache:
                 plain_paths.append(parent)
 
         else:
-            for plain_path in plain_paths:
-                # assert plain_path.parts not in self.__gitignores
-                self.__gitignores[plain_path.parts] = []
+            parent = _Path(tuple())  # Null path.
+            self.__gitignores[parent.parts] = []
 
-            if add_to_children:
-                plain_paths.clear()
-
-            else:
-                return False
+        for plain_path in plain_paths:
+            # assert plain_path.parts not in self.__gitignores
+            self.__gitignores[plain_path.parts] = self.__gitignores[parent.parts]
 
         for parent, (_, parent_plain_paths) in reversed(list(add_to_children.items())):
             # assert parent.parts not in self.__gitignores
@@ -74,10 +71,6 @@ class Cache:
                 self.__gitignores[plain_path.parts] = self.__gitignores[parent.parts]
 
         # This parent comes either from first or second loop.
-        for plain_path in plain_paths:
-            # assert plain_path.parts not in self.__gitignores
-            self.__gitignores[plain_path.parts] = self.__gitignores[parent.parts]
-
         return any((m(path, is_dir=is_dir) for m in self.__gitignores[parent.parts]))
 
 
