@@ -3,6 +3,9 @@ import os
 import re
 
 
+DEFAULT_IGNORE_NAMES = [".gitignore", ".git/info/exclude"]
+
+
 def parse(path, base_path=None):
     if base_path is None:
         base_path = os.path.dirname(path) or os.path.dirname(os.path.abspath(path))
@@ -18,17 +21,18 @@ def parse(path, base_path=None):
     return _IgnoreRules(rules, base_path).match
 
 
-def ignore():
-    matches = Cache()
+def ignore(ignore_names=DEFAULT_IGNORE_NAMES):
+    matches = Cache(ignore_names=ignore_names)
     return lambda root, names: {name for name in names if matches(os.path.join(root, name))}
 
 
-def ignored(path, is_dir=None):
-    return Cache()(path, is_dir=is_dir)
+def ignored(path, is_dir=None, ignore_names=DEFAULT_IGNORE_NAMES):
+    return Cache(ignore_names=ignore_names)(path, is_dir=is_dir)
 
 
 class Cache:
-    def __init__(self):
+    def __init__(self, ignore_names=DEFAULT_IGNORE_NAMES):
+        self.__ignore_names = ignore_names
         self.__gitignores = {}
 
     def __call__(self, path, is_dir=None):
@@ -39,9 +43,14 @@ class Cache:
             if parent.parts in self.__gitignores:
                 break
 
-            parent_gitignore = parent.join(".gitignore")
-            if parent_gitignore.isfile():
-                matches = parse(str(parent_gitignore), base_path=parent)
+            ignore_paths = []
+            for ignore_name in self.__ignore_names:
+                ignore_path = parent.join(ignore_name)
+                if ignore_path.isfile():
+                    ignore_paths.append(str(ignore_path))
+
+            if ignore_paths:
+                matches = [parse(ignore_path, base_path=parent) for ignore_path in ignore_paths]
                 add_to_children[parent] = (matches, plain_paths)
                 plain_paths = []
 
@@ -59,8 +68,8 @@ class Cache:
         for parent, (_, parent_plain_paths) in reversed(list(add_to_children.items())):
             # assert parent.parts not in self.__gitignores
             self.__gitignores[parent.parts] = self.__gitignores[parent.parts[:-1]].copy()
-            for parent_to_add, (gitignore_to_add, _) in reversed(list(add_to_children.items())):
-                self.__gitignores[parent.parts].append(gitignore_to_add)
+            for parent_to_add, (gitignores_to_add, _) in reversed(list(add_to_children.items())):
+                self.__gitignores[parent.parts].extend(gitignores_to_add)
                 if parent_to_add == parent:
                     break
 
