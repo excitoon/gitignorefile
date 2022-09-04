@@ -227,6 +227,42 @@ class TestMatch(unittest.TestCase):
                 self.assertFalse(matches("/home/michael/xyzuvw/abc", is_dir=is_dir))
                 self.assertFalse(matches("/home/michael/xyzuvwabc", is_dir=is_dir))
 
+    def test_double_asterisks_start(self):
+        matches = self.__parse_gitignore_string(["**/abc"], mock_base_path="/home/michael")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/michael/xyz/uvw/abc", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/xyz/uvwabc", is_dir=is_dir))
+                self.assertTrue(matches("/home/michael/xyzuvw/abc", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/xyzuvwabc", is_dir=is_dir))
+
+    def test_double_asterisks_end(self):
+        matches = self.__parse_gitignore_string(["xyz/**"], mock_base_path="/home/michael")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/michael/xyz/uvw/abc", is_dir=is_dir))
+                self.assertTrue(matches("/home/michael/xyz/uvwabc", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/xyzuvw/abc", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/xyzuvwabc", is_dir=is_dir))
+
+    def test_single_asterisk_start(self):
+        matches = self.__parse_gitignore_string(["*/abc"], mock_base_path="/home/michael")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertFalse(matches("/home/michael/xyz/uvw/abc", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/xyz/uvwabc", is_dir=is_dir))
+                self.assertTrue(matches("/home/michael/xyzuvw/abc", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/xyzuvwabc", is_dir=is_dir))
+
+    def test_single_asterisk_end(self):
+        matches = self.__parse_gitignore_string(["xyz/*"], mock_base_path="/home/michael")
+        for is_dir in (False, True):
+            with self.subTest(i=is_dir):
+                self.assertTrue(matches("/home/michael/xyz/uvw/abc", is_dir=is_dir))
+                self.assertTrue(matches("/home/michael/xyz/uvwabc", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/xyzuvw/abc", is_dir=is_dir))
+                self.assertFalse(matches("/home/michael/xyzuvwabc", is_dir=is_dir))
+
     def test_does_not_fail_with_symlinks(self):
         with tempfile.TemporaryDirectory() as d:
             matches = self.__parse_gitignore_string(["*.venv"], mock_base_path=d)

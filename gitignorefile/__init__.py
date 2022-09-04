@@ -345,20 +345,16 @@ def _fnmatch_pathname_to_regexp(pattern, anchored, directory_only):
         c = pattern[i]
         i += 1
         if c == "*":
-            try:
-                if pattern[i] == "*":
+            if i < n and pattern[i] == "*":
+                i += 1
+                if i < n and pattern[i] == "/":
                     i += 1
-                    if pattern[i] == "/":
-                        i += 1
-                        res.append("(.+/)?")  # `/**/` matches `/`.
-
-                    else:
-                        res.append(".*")
+                    res.append("(.+/)?")  # `/**/` matches `/`.
 
                 else:
-                    res.append("[^/]*")
+                    res.append(".*")
 
-            except IndexError:
+            else:
                 res.append("[^/]*")
 
         elif c == "?":
