@@ -18,7 +18,7 @@ pip3 install gitignorefile
 
 ### `gitignorefile.parse()`
 
-Parse single `.gitignore` file. Suppose `/home/michael/project/.gitignore` contains the following:
+Parses single `.gitignore` file. Suppose `/home/michael/project/.gitignore` contains the following:
 
 ```
 __pycache__/

@@ -1,3 +1,5 @@
+"""A spec-compliant `.gitignore` parser for Python."""
+
 import collections
 import os
 import re
@@ -7,6 +9,17 @@ DEFAULT_IGNORE_NAMES = [".gitignore", ".git/info/exclude"]
 
 
 def parse(path, base_path=None):
+    """Parses single `.gitignore` file.
+
+    Args:
+        path (str): Path to `.gitignore` file.
+        base_path (str): Base path for applying ignore rules.
+
+    Returns:
+        Callable[[str], bool]: Callable which returns `True` if specified path is ignored.
+            You can also pass `is_dir: bool` optional parameter if you know whether the specified path is a directory.
+    """
+
     if base_path is None:
         base_path = os.path.dirname(path) or os.path.dirname(os.path.abspath(path))
 
@@ -22,20 +35,60 @@ def parse(path, base_path=None):
 
 
 def ignore(ignore_names=DEFAULT_IGNORE_NAMES):
+    """Returns `shutil.copytree()`-compatible ignore function for skipping ignored files.
+
+    It will check if file is ignored by any `.gitignore` in the directory tree.
+
+    Args:
+        ignore_names (list[str], optional): List of names of ignore files.
+
+    Returns:
+        Callable[[str, list[str]], list[str]]: Callable compatible with `shutil.copytree()`.
+    """
+
     matches = Cache(ignore_names=ignore_names)
     return lambda root, names: {name for name in names if matches(os.path.join(root, name))}
 
 
 def ignored(path, is_dir=None, ignore_names=DEFAULT_IGNORE_NAMES):
+    """Checks if file is ignored by any `.gitignore` in the directory tree.
+
+    Args:
+        path (str): Path to check against ignore rules.
+        is_dir (bool, optional): Set if you know whether the specified path is a directory.
+        ignore_names (list[str], optional): List of names of ignore files.
+
+    Returns:
+        bool: `True` if the path is ignored.
+    """
+
     return Cache(ignore_names=ignore_names)(path, is_dir=is_dir)
 
 
 class Cache:
+    """Caches information about different `.gitignore` files in the directory tree.
+
+    Allows to reduce number of queries to filesystem to mininum.
+    """
+
     def __init__(self, ignore_names=DEFAULT_IGNORE_NAMES):
+        """Constructs `Cache` objects.
+
+        Args:
+            ignore_names (list[str], optional): List of names of ignore files.
+        """
+
         self.__ignore_names = ignore_names
         self.__gitignores = {}
 
     def __call__(self, path, is_dir=None):
+        """Checks whether the specified path is ignored.
+
+        Args:
+            path (str): Path to check against ignore rules.
+            is_dir (bool, optional): Set if you know whether the specified path is a directory.
+        """
+
         path = _Path(path)
         add_to_children = {}
         plain_paths = []
@@ -131,12 +184,11 @@ class _Path:
 
 
 def _rule_from_pattern(pattern):
-    """
-    Take a `.gitignore` match pattern, such as "*.py[cod]" or "**/*.bak",
-    and return an `_IgnoreRule` suitable for matching against files and
-    directories. Patterns which do not match files, such as comments
-    and blank lines, will return `None`.
-    """
+    # Takes a `.gitignore` match pattern, such as "*.py[cod]" or "**/*.bak",
+    # and returns an `_IgnoreRule` suitable for matching against files and
+    # directories. Patterns which do not match files, such as comments
+    # and blank lines, will return `None`.
+
     # Store the exact pattern for our repr and string functions
     orig_pattern = pattern
 
@@ -215,11 +267,6 @@ class _IgnoreRules:
         self.__base_path = _Path(base_path) if isinstance(base_path, str) else base_path
 
     def match(self, path, is_dir=None):
-        """
-        Because Git allows for nested `.gitignore` files, a `base_path` value
-        is required for correct behavior.
-        """
-
         if isinstance(path, str):
             path = _Path(path)
 
@@ -274,13 +321,12 @@ else:
     _path_split = lambda path: path.split(os.sep)
 
 
-# Frustratingly, python's fnmatch doesn't provide the FNM_PATHNAME
-# option that `.gitignore`'s behavior depends on.
 def _fnmatch_pathname_to_regexp(pattern, anchored, directory_only):
-    """
-    Implements `fnmatch` style-behavior, as though with `FNM_PATHNAME` flagged;
-    the path separator will not match shell-style `*` and `.` wildcards.
-    """
+    # Implements `fnmatch` style-behavior, as though with `FNM_PATHNAME` flagged;
+    # the path separator will not match shell-style `*` and `.` wildcards.
+
+    # Frustratingly, python's fnmatch doesn't provide the FNM_PATHNAME
+    # option that `.gitignore`'s behavior depends on.
 
     if not pattern:
         if directory_only:
