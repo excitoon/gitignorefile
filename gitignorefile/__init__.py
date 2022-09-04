@@ -18,18 +18,19 @@ def parse(path, base_path=None):
     return _IgnoreRules(rules, base_path).match
 
 
-def ignore(ignore_file_name: str = '.gitignore'):
-    matches = Cache(ignore_file_name=ignore_file_name)
+def ignore(ignore_file_sources: list[str] = None):
+    matches = Cache(ignore_file_sources=ignore_file_sources)
     return lambda root, names: {name for name in names if matches(os.path.join(root, name))}
 
 
-def ignored(path, is_dir=None, ignore_file_name: str = '.gitignore'):
-    return Cache(ignore_file_name=ignore_file_name)(path, is_dir=is_dir)
+def ignored(path, is_dir=None, ignore_file_sources: list[str] = None):
+    return Cache(ignore_file_sources=ignore_file_sources)(path, is_dir=is_dir)
 
 
 class Cache:
-    def __init__(self, ignore_file_name: str = '.gitignore'):
-        self.ignore_file_name = ignore_file_name
+    def __init__(self, ignore_file_sources: list[str] = None):
+        ignore_file_sources = ignore_file_sources or [".gitignore", ".git/info/exclude"]
+        self.ignore_file_sources = ignore_file_sources
         self.__gitignores = {}
 
     def __call__(self, path, is_dir=None):
@@ -40,14 +41,15 @@ class Cache:
             if parent.parts in self.__gitignores:
                 break
 
-            parent_gitignore = parent.join(self.ignore_file_name)
-            if parent_gitignore.isfile():
-                matches = parse(str(parent_gitignore), base_path=parent)
-                add_to_children[parent] = (matches, plain_paths)
-                plain_paths = []
+            for ignore_file_source in self.ignore_file_sources:
+                parent_gitignore = parent.join(ignore_file_source)
+                if parent_gitignore.isfile():
+                    matches = parse(str(parent_gitignore), base_path=parent)
+                    add_to_children[parent] = (matches, plain_paths)
+                    plain_paths = []
 
-            else:
-                plain_paths.append(parent)
+                else:
+                    plain_paths.append(parent)
 
         else:
             parent = _Path(tuple())  # Null path.
