@@ -74,6 +74,21 @@ matches("/home/michael/project/dir/main.pyc") # True
 matches("/home/michael/project/__pycache__") # True
 ```
 
+### Custom ignore file name
+
+You could override name of the file, that will be used to fetch ignore rules. Default value is `.gitignore`.
+
+```python3
+import gitignorefile
+
+matches = gitignorefile.Cache(ignore_file_name=".mylovelytoolignore")
+matches("/home/michael/project/main.py") # False
+matches("/home/michael/project/main.pyc") # True
+matches("/home/michael/project/dir/main.pyc") # True
+matches("/home/michael/project/__pycache__") # True
+```
+
+
 ## Credits
 
 - https://github.com/snark/ignorance by Steve Cook

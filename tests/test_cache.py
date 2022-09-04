@@ -40,82 +40,84 @@ class TestCache(unittest.TestCase):
                 except KeyError:
                     raise FileNotFoundError()
 
-        my_stat = Stat(
-            [
-                "/home/vladimir/project/directory/subdirectory",
-                "/home/vladimir/project/directory",
-                "/home/vladimir/project",
-                "/home/vladimir",
-                "/home",
-                "/",
-            ],
-            [
-                "/home/vladimir/project/directory/subdirectory/subdirectory/file.txt",
-                "/home/vladimir/project/directory/subdirectory/subdirectory/file2.txt",
-                "/home/vladimir/project/directory/subdirectory/subdirectory/file3.txt",
-                "/home/vladimir/project/directory/subdirectory/file.txt",
-                "/home/vladimir/project/directory/subdirectory/file2.txt",
-                "/home/vladimir/project/directory/.gitignore",
-                "/home/vladimir/project/directory/file.txt",
-                "/home/vladimir/project/directory/file2.txt",
-                "/home/vladimir/project/file.txt",
-                "/home/vladimir/project/.gitignore",
-                "/home/vladimir/file.txt",
-            ],
-        )
+        for ignore_file_name in (".gitignore", ".mylovelytoolignore"):
+            with self.subTest(ignore_file_name=ignore_file_name):
+                my_stat = Stat(
+                    [
+                        "/home/vladimir/project/directory/subdirectory",
+                        "/home/vladimir/project/directory",
+                        "/home/vladimir/project",
+                        "/home/vladimir",
+                        "/home",
+                        "/",
+                    ],
+                    [
+                        "/home/vladimir/project/directory/subdirectory/subdirectory/file.txt",
+                        "/home/vladimir/project/directory/subdirectory/subdirectory/file2.txt",
+                        "/home/vladimir/project/directory/subdirectory/subdirectory/file3.txt",
+                        "/home/vladimir/project/directory/subdirectory/file.txt",
+                        "/home/vladimir/project/directory/subdirectory/file2.txt",
+                        "/home/vladimir/project/directory/%s" % ignore_file_name,
+                        "/home/vladimir/project/directory/file.txt",
+                        "/home/vladimir/project/directory/file2.txt",
+                        "/home/vladimir/project/file.txt",
+                        "/home/vladimir/project/%s" % ignore_file_name,
+                        "/home/vladimir/file.txt",
+                    ],
+                )
 
-        def mock_open(path):
-            data = {
-                normalize_path("/home/vladimir/project/directory/.gitignore"): ["file.txt"],
-                normalize_path("/home/vladimir/project/.gitignore"): ["file2.txt"],
-            }
+                def mock_open(path):
+                    data = {
+                        normalize_path("/home/vladimir/project/directory/%s" % ignore_file_name): ["file.txt"],
+                        normalize_path("/home/vladimir/project/%s" % ignore_file_name): ["file2.txt"],
+                    }
 
-            statistics["open"] += 1
-            try:
-                return unittest.mock.mock_open(read_data="\n".join(data[normalize_path(path)]))(path)
+                    statistics["open"] += 1
+                    try:
+                        return unittest.mock.mock_open(read_data="\n".join(data[normalize_path(path)]))(path)
 
-            except KeyError:
-                raise FileNotFoundError()
+                    except KeyError:
+                        raise FileNotFoundError()
 
-        def mock_isdir(path):
-            statistics["isdir"] += 1
-            try:
-                return my_stat(path).isdir()
-            except FileNotFoundError:
-                return False
+                def mock_isdir(path):
+                    statistics["isdir"] += 1
+                    try:
+                        return my_stat(path).isdir()
+                    except FileNotFoundError:
+                        return False
 
-        def mock_isfile(path):
-            statistics["isfile"] += 1
-            try:
-                return my_stat(path).isfile()
-            except FileNotFoundError:
-                return False
+                def mock_isfile(path):
+                    statistics["isfile"] += 1
+                    try:
+                        return my_stat(path).isfile()
+                    except FileNotFoundError:
+                        return False
 
-        data = {
-            "/home/vladimir/project/directory/subdirectory/file.txt": True,
-            "/home/vladimir/project/directory/subdirectory/file2.txt": True,
-            "/home/vladimir/project/directory/subdirectory/subdirectory/file.txt": True,
-            "/home/vladimir/project/directory/subdirectory/subdirectory/file2.txt": True,
-            "/home/vladimir/project/directory/subdirectory/subdirectory/file3.txt": False,
-            "/home/vladimir/project/directory/file.txt": True,
-            "/home/vladimir/project/directory/file2.txt": True,
-            "/home/vladimir/project/file.txt": False,
-            "/home/vladimir/file.txt": False,  # No rules and no `isdir` calls for this file.
-        }
+                data = {
+                    "/home/vladimir/project/directory/subdirectory/file.txt": True,
+                    "/home/vladimir/project/directory/subdirectory/file2.txt": True,
+                    "/home/vladimir/project/directory/subdirectory/subdirectory/file.txt": True,
+                    "/home/vladimir/project/directory/subdirectory/subdirectory/file2.txt": True,
+                    "/home/vladimir/project/directory/subdirectory/subdirectory/file3.txt": False,
+                    "/home/vladimir/project/directory/file.txt": True,
+                    "/home/vladimir/project/directory/file2.txt": True,
+                    "/home/vladimir/project/file.txt": False,
+                    "/home/vladimir/file.txt": False,  # No rules and no `isdir` calls for this file.
+                }
 
-        for permutation in itertools.islice(itertools.permutations(data.items()), 0, None, 100):
-            statistics = {"open": 0, "isdir": 0, "isfile": 0}
+                for permutation in itertools.islice(itertools.permutations(data.items()), 0, None, 200):
+                    statistics = {"open": 0, "isdir": 0, "isfile": 0}
 
-            with unittest.mock.patch("builtins.open", mock_open):
-                with unittest.mock.patch("os.path.isdir", mock_isdir):
-                    with unittest.mock.patch("os.path.isfile", mock_isfile):
-                        matches = gitignorefile.Cache()
-                        for path, expected in permutation:
-                            self.assertEqual(matches(path), expected)
+                    with unittest.mock.patch("builtins.open", mock_open):
+                        with unittest.mock.patch("os.path.isdir", mock_isdir):
+                            with unittest.mock.patch("os.path.isfile", mock_isfile):
+                                matches = gitignorefile.Cache(ignore_file_name=ignore_file_name)
+                                for path, expected in permutation:
+                                    self.assertEqual(matches(path), expected)
 
-            self.assertEqual(statistics["open"], 2)
-            self.assertEqual(statistics["isdir"], len(data) - 1)
-            self.assertEqual(statistics["isfile"], 7)  # Unique path fragments.
+                    self.assertEqual(statistics["open"], 2)
+                    self.assertEqual(statistics["isdir"], len(data) - 1)
+                    self.assertEqual(statistics["isfile"], 7)  # Unique path fragments.
 
     def test_wrong_symlink(self):
         with tempfile.TemporaryDirectory() as d:

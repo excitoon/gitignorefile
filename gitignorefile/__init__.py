@@ -18,17 +18,18 @@ def parse(path, base_path=None):
     return _IgnoreRules(rules, base_path).match
 
 
-def ignore():
-    matches = Cache()
+def ignore(ignore_file_name: str = '.gitignore'):
+    matches = Cache(ignore_file_name=ignore_file_name)
     return lambda root, names: {name for name in names if matches(os.path.join(root, name))}
 
 
-def ignored(path, is_dir=None):
-    return Cache()(path, is_dir=is_dir)
+def ignored(path, is_dir=None, ignore_file_name: str = '.gitignore'):
+    return Cache(ignore_file_name=ignore_file_name)(path, is_dir=is_dir)
 
 
 class Cache:
-    def __init__(self):
+    def __init__(self, ignore_file_name: str = '.gitignore'):
+        self.ignore_file_name = ignore_file_name
         self.__gitignores = {}
 
     def __call__(self, path, is_dir=None):
@@ -39,7 +40,7 @@ class Cache:
             if parent.parts in self.__gitignores:
                 break
 
-            parent_gitignore = parent.join(".gitignore")
+            parent_gitignore = parent.join(self.ignore_file_name)
             if parent_gitignore.isfile():
                 matches = parse(str(parent_gitignore), base_path=parent)
                 add_to_children[parent] = (matches, plain_paths)
