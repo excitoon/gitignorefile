@@ -65,6 +65,25 @@ def ignored(path, is_dir=None, ignore_names=DEFAULT_IGNORE_NAMES):
     return Cache(ignore_names=ignore_names)(path, is_dir=is_dir)
 
 
+def walk(path, walker=os.walk, ignore_names=DEFAULT_IGNORE_NAMES):
+    """FIXME
+
+    Args:
+        path (str): FIXME
+        walker (FIXME): FIXME
+        ignore_names (list[str], optional): List of names of ignore files.
+
+    Returns:
+        FIXME
+    """
+
+    cache = Cache(ignore_names=ignore_names)
+    for root, dirs, files, *rest in walker(path):
+        dirs[:] = [x for x in dirs if x != ".git" and not cache(os.path.join(root, x), is_dir=True)]
+        files[:] = [x for x in files if not cache(os.path.join(root, x), is_dir=False)]
+        yield root, dirs, files, *rest
+
+
 class Cache:
     """Caches information about different `.gitignore` files in the directory tree.
 
