@@ -81,7 +81,7 @@ def walk(path, walker=os.walk, ignore_names=DEFAULT_IGNORE_NAMES):
     for root, dirs, files, *rest in walker(path):
         dirs[:] = [x for x in dirs if x != ".git" and not cache(os.path.join(root, x), is_dir=True)]
         files[:] = [x for x in files if not cache(os.path.join(root, x), is_dir=False)]
-        yield root, dirs, files, *rest
+        yield (root, dirs, files, *rest)
 
 
 class Cache:
