@@ -71,7 +71,7 @@ class Cache:
     Allows to reduce number of queries to filesystem to mininum.
     """
 
-    def __init__(self, ignore_names=DEFAULT_IGNORE_NAMES):
+    def __init__(self, ignore_names=DEFAULT_IGNORE_NAMES, ignore_root=None):
         """Constructs `Cache` objects.
 
         Args:
@@ -79,7 +79,13 @@ class Cache:
         """
 
         self.__ignore_names = ignore_names
-        self.__gitignores = {}
+        self.__ignore_root = _Path(ignore_root)
+        self.__gitignores = { tuple(): [] }
+
+        # Define ignores for out of tree
+        if self.__ignore_root is not None:
+            oot = _Path(self.__ignore_root.parts[:-1])
+            self.__gitignores[oot.parts] = []
 
     def __call__(self, path, is_dir=None):
         """Checks whether the specified path is ignored.
@@ -92,7 +98,7 @@ class Cache:
         path = _Path(path)
         add_to_children = {}
         plain_paths = []
-        for parent in path.parents():
+        for parent in path.parents(self.__ignore_root):
             if parent.parts in self.__gitignores:
                 break
 
@@ -112,7 +118,6 @@ class Cache:
 
         else:
             parent = _Path(tuple())  # Null path.
-            self.__gitignores[parent.parts] = []
 
         for plain_path in plain_paths:
             # assert plain_path.parts not in self.__gitignores
@@ -163,9 +168,12 @@ class _Path:
         else:
             return None
 
-    def parents(self):
+    def parents(self, root=None):
         for i in range(len(self.__parts) - 1, 0, -1):
-            yield _Path(self.__parts[:i])
+            parent = _Path(self.__parts[:i])
+            if (root is not None) and (parent.__parts[:len(root.__parts)] != root.__parts):
+                break
+            yield parent
 
     def isfile(self):
         return os.path.isfile(str(self))
