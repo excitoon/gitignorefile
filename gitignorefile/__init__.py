@@ -5,7 +5,7 @@ import os
 import re
 
 from abc import ABC, abstractmethod
-from typing import Iterator
+from typing import Iterator, Type
 
 class _BasePath(ABC):
     def __init__(self, path):
@@ -97,7 +97,7 @@ class _OSPath(_BasePath):
         with open(str(self), 'rt', encoding='utf-8') as fp:
             yield from fp
 
-def prependFilesPath(files: dict[_BasePath, str], basePath: Type[_BasePath] = OSPath):
+def prependFilesPath(files: dict[_BasePath, str], basePath: Type[_BasePath] = _OSPath):
     '''
         Return a class extending basePath that will interanally show `files`
         as present prepended with the given content
