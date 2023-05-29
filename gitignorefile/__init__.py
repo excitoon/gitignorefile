@@ -1,14 +1,127 @@
 """A spec-compliant `.gitignore` parser for Python."""
 
-import collections
+from functools import cache
 import os
 import re
 
+from abc import ABC, abstractmethod
+from typing import Iterator, Type
+
+class _BasePath(ABC):
+    def __init__(self, path):
+        if path is None:
+            path = tuple()
+        if isinstance(path, str):
+            # Suppose path alwats "absolute"-like
+            self.__parts = type(self)._toparts(path)
+        elif isinstance(path, _BasePath):
+            self.__parts = path.__parts
+        else:
+            self.__parts = path
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.parts == type(self)._toparts(other)
+        elif isinstance(other, _BasePath):
+            return self.parts == other.parts
+        else:
+            return self.parts == other
+    def __hash__(self) -> int:
+        return hash(self.parts)
+
+    @staticmethod
+    @abstractmethod # Must be innermost decorator!
+    def _toparts(path: str) -> tuple[str]:
+        pass
+    @abstractmethod
+    def isfile(self) -> bool:
+        pass
+    @abstractmethod
+    def isdir(self) -> bool:
+        pass
+    @abstractmethod
+    def readlines(self) -> Iterator[str]:
+        pass
+
+    @property
+    def parts(self):
+        return self.__parts
+
+    def join(self, name):
+        return type(self)(self.__parts + (name,))
+
+    def relpath(self, base_path):
+        if self.__parts[:len(base_path.__parts)] == base_path.__parts:
+            return '/'.join(self.__parts[len(base_path.__parts):])
+        else:
+            return None
+
+    def convert(self, base_from, base_to):
+        if self.__parts[:len(base_from.__parts)] == base_from.__parts:
+            return type(base_to)(base_to.__parts + self.__parts[len(base_from.__parts):])
+        return None
+
+    def parent(self):
+        return type(self)(self.__parts[:-1])
+
+    def parents(self, root=None):
+        for i in range(len(self.__parts) - 1, 0, -1):
+            parent = type(self)(self.__parts[:i])
+            if (root is not None) and (parent.__parts[:len(root.__parts)] != root.__parts):
+                break
+            yield parent
+
+    def __str__(self):
+        if self.__parts == ('', ):
+            return '/'
+        return '/'.join(self.__parts)
+
+_osSeps = [ sep for sep in [os.sep, os.altsep] if sep is not None ]
+_osSepsRe = re.compile('[' + ''.join(re.escape(sep) for sep in _osSeps) + ']')
+class _OSPath(_BasePath):
+    @staticmethod
+    #@override
+    def _toparts(path: str):
+        global _osSepsRe
+        return tuple(_osSepsRe.split(os.path.abspath(path)))
+    @cache
+    #@override
+    def isfile(self):
+        return os.path.isfile(str(self))
+    @cache
+    #@override
+    def isdir(self):
+        return os.path.isdir(str(self))
+    #@override
+    def readlines(self):
+        with open(str(self), 'rt', encoding='utf-8') as fp:
+            yield from fp
+
+def prependFilesPath(files: dict[_BasePath, str], basePath: Type[_BasePath] = _OSPath):
+    '''
+        Return a class extending basePath that will interanally show `files`
+        as present prepended with the given content
+    '''
+    class _ExtraPath(basePath):
+        #@override
+        def isfile(self, count_extra = True):
+            if count_extra:
+                if self in files:
+                    return True
+            return super().isfile()
+        #@override
+        def readlines(self):
+            if self in files:
+                yield from files[self].split('\n')
+                if super().isfile():
+                    yield from super().readlines()
+            else:
+                yield from super().readlines()
+    return _ExtraPath
 
 DEFAULT_IGNORE_NAMES = [".gitignore", ".git/info/exclude"]
 
-
-def parse(path, base_path=None):
+def parse(path: _BasePath|str, base_path=None):
     """Parses single `.gitignore` file.
 
     Args:
@@ -20,50 +133,20 @@ def parse(path, base_path=None):
             You can also pass `is_dir: bool` optional parameter if you know whether the specified path is a directory.
     """
 
+    if isinstance(path, str):
+        path = _OSPath(path) # Sensible fallback, all library calls this with a _BasePath subclass
+
     if base_path is None:
-        base_path = os.path.dirname(path) or os.path.dirname(os.path.abspath(path))
+        base_path = path.parent()
 
     rules = []
-    with open(path) as ignore_file:
-        for line in ignore_file:
-            line = line.rstrip("\r\n")
-            rule = _rule_from_pattern(line)
-            if rule:
-                rules.append(rule)
+    for line in path.readlines():
+        line = line.rstrip("\r\n")
+        rule = _rule_from_pattern(line)
+        if rule:
+            rules.append(rule)
 
     return _IgnoreRules(rules, base_path).match
-
-
-def ignore(ignore_names=DEFAULT_IGNORE_NAMES):
-    """Returns `shutil.copytree()`-compatible ignore function for skipping ignored files.
-
-    It will check if file is ignored by any `.gitignore` in the directory tree.
-
-    Args:
-        ignore_names (list[str], optional): List of names of ignore files.
-
-    Returns:
-        Callable[[str, list[str]], list[str]]: Callable compatible with `shutil.copytree()`.
-    """
-
-    matches = Cache(ignore_names=ignore_names)
-    return lambda root, names: {name for name in names if matches(os.path.join(root, name))}
-
-
-def ignored(path, is_dir=None, ignore_names=DEFAULT_IGNORE_NAMES):
-    """Checks if file is ignored by any `.gitignore` in the directory tree.
-
-    Args:
-        path (str): Path to check against ignore rules.
-        is_dir (bool, optional): Set if you know whether the specified path is a directory.
-        ignore_names (list[str], optional): List of names of ignore files.
-
-    Returns:
-        bool: `True` if the path is ignored.
-    """
-
-    return Cache(ignore_names=ignore_names)(path, is_dir=is_dir)
-
 
 class Cache:
     """Caches information about different `.gitignore` files in the directory tree.
@@ -71,15 +154,24 @@ class Cache:
     Allows to reduce number of queries to filesystem to mininum.
     """
 
-    def __init__(self, ignore_names=DEFAULT_IGNORE_NAMES):
+    def __init__(self, ignore_names=DEFAULT_IGNORE_NAMES, ignore_root=None, _Path: type[_BasePath] = _OSPath):
         """Constructs `Cache` objects.
 
         Args:
             ignore_names (list[str], optional): List of names of ignore files.
         """
 
+        self._Path = _Path
         self.__ignore_names = ignore_names
-        self.__gitignores = {}
+        self.__gitignores = { tuple(): [] }
+
+        # Define ignores for out of tree
+        if ignore_root is not None:
+            self.__ignore_root = self._Path(ignore_root)
+            oot = self.__ignore_root.parent()
+            self.__gitignores[oot.parts] = []
+        else:
+            self.__ignore_root = None
 
     def __call__(self, path, is_dir=None):
         """Checks whether the specified path is ignored.
@@ -89,10 +181,10 @@ class Cache:
             is_dir (bool, optional): Set if you know whether the specified path is a directory.
         """
 
-        path = _Path(path)
+        path = self._Path(path)
         add_to_children = {}
         plain_paths = []
-        for parent in path.parents():
+        for parent in path.parents(self.__ignore_root):
             if parent.parts in self.__gitignores:
                 break
 
@@ -100,19 +192,17 @@ class Cache:
             for ignore_name in self.__ignore_names:
                 ignore_path = parent.join(ignore_name)
                 if ignore_path.isfile():
-                    ignore_paths.append(str(ignore_path))
+                    ignore_paths.append(ignore_path)
 
             if ignore_paths:
                 matches = [parse(ignore_path, base_path=parent) for ignore_path in ignore_paths]
                 add_to_children[parent] = (matches, plain_paths)
                 plain_paths = []
-
             else:
                 plain_paths.append(parent)
-
+        
         else:
-            parent = _Path(tuple())  # Null path.
-            self.__gitignores[parent.parts] = []
+            parent = self._Path(tuple())  # Null path.
 
         for plain_path in plain_paths:
             # assert plain_path.parts not in self.__gitignores
@@ -132,55 +222,8 @@ class Cache:
                 # assert plain_path.parts not in self.__gitignores
                 self.__gitignores[plain_path.parts] = self.__gitignores[parent.parts]
 
-        # This parent comes either from first or second loop.
+        # This parent comes either from first or second loop._Path = None # @IMPORTANT: TO BE FILLED BY IMPORTER
         return any((m(path, is_dir=is_dir) for m in self.__gitignores[parent.parts]))
-
-
-class _Path:
-    def __init__(self, path):
-        if isinstance(path, str):
-            abs_path = os.path.abspath(path)
-            self.__parts = tuple(_path_split(abs_path))
-            self.__joined = abs_path
-            self.__is_dir = None
-
-        else:
-            self.__parts = path
-            self.__joined = None
-            self.__is_dir = None
-
-    @property
-    def parts(self):
-        return self.__parts
-
-    def join(self, name):
-        return _Path(self.__parts + (name,))
-
-    def relpath(self, base_path):
-        if self.__parts[: len(base_path.__parts)] == base_path.__parts:
-            return "/".join(self.__parts[len(base_path.__parts) :])
-
-        else:
-            return None
-
-    def parents(self):
-        for i in range(len(self.__parts) - 1, 0, -1):
-            yield _Path(self.__parts[:i])
-
-    def isfile(self):
-        return os.path.isfile(str(self))
-
-    def isdir(self):
-        if self.__is_dir is not None:
-            return self.__is_dir
-        self.__is_dir = os.path.isdir(str(self))
-        return self.__is_dir
-
-    def __str__(self):
-        if self.__joined is None:
-            self.__joined = os.sep.join(self.__parts) if self.__parts != ("",) else os.sep
-        return self.__joined
-
 
 def _rule_from_pattern(pattern):
     # Takes a `.gitignore` match pattern, such as "*.py[cod]" or "**/*.bak",
@@ -260,14 +303,14 @@ def _rule_from_pattern(pattern):
 
 
 class _IgnoreRules:
-    def __init__(self, rules, base_path):
+    def __init__(self, rules, base_path: _BasePath):
         self.__rules = rules
         self.__can_return_immediately = not any((r.negation for r in rules))
-        self.__base_path = _Path(base_path) if isinstance(base_path, str) else base_path
+        self.__base_path = base_path
 
     def match(self, path, is_dir=None):
         if isinstance(path, str):
-            path = _Path(path)
+            path = type(self.__base_path)(path)
 
         rel_path = path.relpath(self.__base_path)
 
@@ -314,15 +357,6 @@ class _IgnoreRule:
         # `self.directory_only` implies we have group number 1.
         # N.B. Question mark inside a group without a name can shift indices. :(
         return m and (not self.__directory_only or m.group(1) is not None or is_dir)
-
-
-if os.altsep is not None:
-    _all_seps_expr = f"[{re.escape(os.sep)}{re.escape(os.altsep)}]"
-    _path_split = lambda path: re.split(_all_seps_expr, path)
-
-else:
-    _path_split = lambda path: path.split(os.sep)
-
 
 def _fnmatch_pathname_to_regexp(pattern, anchored, directory_only):
     # Implements `fnmatch` style-behavior, as though with `FNM_PATHNAME` flagged;
