@@ -19,6 +19,16 @@ class _BasePath(ABC):
         else:
             self.__parts = path
 
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.parts == type(self)._toparts(other)
+        elif isinstance(other, _BasePath):
+            return self.parts == other.parts
+        else:
+            return self.parts == other
+    def __hash__(self) -> int:
+        return hash(self.parts)
+
     @staticmethod
     @abstractmethod # Must be innermost decorator!
     def _toparts(path: str) -> tuple[str]:
@@ -86,6 +96,28 @@ class _OSPath(_BasePath):
     def readlines(self):
         with open(str(self), 'rt', encoding='utf-8') as fp:
             yield from fp
+
+def prependFilesPath(files: dict[_BasePath, str], basePath: Type[_BasePath] = OSPath):
+    '''
+        Return a class extending basePath that will interanally show `files`
+        as present prepended with the given content
+    '''
+    class _ExtraPath(basePath):
+        #@override
+        def isfile(self, count_extra = True):
+            if count_extra:
+                if self in files:
+                    return True
+            return super().isfile()
+        #@override
+        def readlines(self):
+            if self in files:
+                yield from files[self].split('\n')
+                if super().isfile():
+                    yield from super().readlines()
+            else:
+                yield from super().readlines()
+    return _ExtraPath
 
 DEFAULT_IGNORE_NAMES = [".gitignore", ".git/info/exclude"]
 
